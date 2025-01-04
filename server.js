@@ -2,7 +2,12 @@ const express = require("express");
 const { MongoClient } = require("mongodb"); // Importa MongoClient una sola vez
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000; // Usa el puerto dinámico o el 3000 como respaldo
+
+app.listen(port, () => {
+  console.log(`Servidor ejecutándose en http://localhost:${port}`);
+});
+
 
 app.use(express.json()); // Middleware para procesar JSON
 
