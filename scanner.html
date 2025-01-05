@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escáner de Código de Barras</title>
+</head>
+<body>
+    <h1>Escáner de Código de Barras</h1>
+    <p id="mode">Modo actual: <strong>Recibido</strong></p>
+    <button onclick="toggleMode()">Cambiar Modo</button>
+
+    <input
+        type="text"
+        id="barcodeInput"
+        placeholder="Escanea el código aquí"
+        autofocus
+    />
+
+    <p id="status"></p>
+
+    <script>
+        // Modo inicial
+        let mode = "recibido";
+
+        // Alternar entre los modos "Recibido" y "En Camino"
+        function toggleMode() {
+            mode = mode === "recibido" ? "en-camino" : "recibido";
+            document.getElementById("mode").innerHTML = `Modo actual: <strong>${mode === "recibido" ? "Recibido" : "En Camino"}</strong>`;
+        }
+
+        // Función para enviar automáticamente al escanear
+        async function sendBarcode(barcode) {
+            if (!barcode) {
+                document.getElementById("status").innerText = "Por favor, escanea un código válido.";
+                return;
+            }
+
+            // Configurar el endpoint según el modo
+            const endpoint =
+                mode === "recibido"
+                    ? "https://servidor-backend-paquetes.onrender.com/scanner/recibido"
+                    : "https://servidor-backend-paquetes.onrender.com/scanner/en-camino";
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: mode === "recibido" ? "POST" : "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        paquete_id: barcode,
+                    }),
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    document.getElementById("status").innerText = result.message || "Operación realizada correctamente.";
+                } else {
+                    document.getElementById("status").innerText = result.error || "Ocurrió un error.";
+                }
+            } catch (error) {
+                console.error("Error al enviar los datos:", error);
+                document.getElementById("status").innerText = "Error al conectar con el servidor.";
+            } finally {
+                // Limpia el campo de entrada después de procesar
+                document.getElementById("barcodeInput").value = "";
+                document.getElementById("barcodeInput").focus();
+            }
+        }
+
+        // Detectar el escaneo y enviar automáticamente
+        document.getElementById("barcodeInput").addEventListener("keypress", function (event) {
+            if (event.key === "Enter") {
+                const barcode = document.getElementById("barcodeInput").value.trim();
+                sendBarcode(barcode);
+            }
+        });
+    </script>
+</body>
+</html>
