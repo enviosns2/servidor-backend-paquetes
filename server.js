@@ -1,25 +1,53 @@
+require("dotenv").config(); // Cargar variables de entorno desde .env
 const express = require("express");
-const { MongoClient } = require("mongodb"); // Importa MongoClient una sola vez
+const { MongoClient } = require("mongodb"); // Importa MongoClient
 
 const app = express();
-const port = process.env.PORT || 3000; // Usa el puerto dinámico o el 3000 como respaldo
+const port = process.env.PORT || 3000; // Usa el puerto dinámico o 3000 por defecto
 
-app.listen(port, () => {
-  console.log(`Servidor ejecutándose en http://localhost:${port}`);
-});
+// Middleware para procesar JSON
+app.use(express.json());
 
+// Configuración de MongoDB Atlas usando variables de entorno
+const uri = process.env.MONGO_URI; // Obtiene la URI desde el archivo .env
+const client = new MongoClient(uri);
 
-app.use(express.json()); // Middleware para procesar JSON
+let db; // Variable global para la base de datos
 
-// Configuración de MongoDB Atlas
-const uri = "mongodb+srv://EnviosNS:NS2025NS@cluster0.vl4vx.mongodb.net/paquetes?retryWrites=true&w=majority"; 
-// Nota: Reemplaza 'NS2025NS' con tu contraseña real
-
-const client = new MongoClient(uri); // Configuración moderna
+// Inicializa la conexión a MongoDB al iniciar el servidor
+(async function initializeMongoDB() {
+  try {
+    await client.connect(); // Conectar al clúster
+    db = client.db("paquetes"); // Seleccionar la base de datos
+    console.log("Conexión inicializada a MongoDB");
+  } catch (error) {
+    console.error("Error al inicializar MongoDB:", error);
+    process.exit(1); // Salir si no se puede conectar
+  }
+})();
 
 // Ruta para probar el servidor
 app.get("/", (req, res) => {
   res.send("¡El servidor está funcionando correctamente!");
+});
+
+// Ruta para obtener un paquete por ID
+app.get("/paquetes/:id", async (req, res) => {
+  const paqueteId = req.params.id; // Obtén el ID desde la URL
+
+  try {
+    const collection = db.collection("estados"); // Seleccionar la colección
+    const paquete = await collection.findOne({ paquete_id: paqueteId });
+
+    if (!paquete) {
+      return res.status(404).json({ error: "Paquete no encontrado." });
+    }
+
+    res.json(paquete); // Enviar el paquete como respuesta
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
 });
 
 // Ruta para actualizar el estado de un paquete
@@ -32,10 +60,7 @@ app.put("/paquetes/:id", async (req, res) => {
   }
 
   try {
-    await client.connect(); // Conectar a MongoDB
-    const database = client.db("paquetes"); // Selecciona la base de datos
-    const collection = database.collection("estados"); // Selecciona la colección
-
+    const collection = db.collection("estados"); // Seleccionar la colección
     const fechaActual = new Date(); // Fecha y hora actual
 
     // Actualizar el estado y agregar el historial
@@ -46,9 +71,9 @@ app.put("/paquetes/:id", async (req, res) => {
         $push: {
           historial: {
             estado: nuevoEstado,
-            fecha: fechaActual
-          }
-        }
+            fecha: fechaActual,
+          },
+        },
       }
     );
 
@@ -60,8 +85,47 @@ app.put("/paquetes/:id", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Error interno del servidor." });
-  } finally {
-    await client.close(); // Cierra la conexión
+  }
+});
+
+// Ruta para crear un nuevo paquete
+app.post("/paquetes", async (req, res) => {
+  const nuevoPaquete = req.body; // Datos enviados desde el cliente
+
+  if (!nuevoPaquete || !nuevoPaquete.paquete_id || !nuevoPaquete.estado_actual) {
+    return res.status(400).json({ error: "Los datos del paquete son requeridos." });
+  }
+
+  try {
+    const collection = db.collection("estados"); // Seleccionar la colección
+    const resultado = await collection.insertOne(nuevoPaquete);
+
+    res.status(201).json({
+      message: "Paquete creado exitosamente.",
+      id: resultado.insertedId,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
+});
+
+// Ruta para eliminar un paquete
+app.delete("/paquetes/:id", async (req, res) => {
+  const paqueteId = req.params.id; // ID del paquete desde la URL
+
+  try {
+    const collection = db.collection("estados"); // Seleccionar la colección
+    const resultado = await collection.deleteOne({ paquete_id: paqueteId });
+
+    if (resultado.deletedCount === 0) {
+      return res.status(404).json({ error: "Paquete no encontrado." });
+    }
+
+    res.json({ message: "Paquete eliminado correctamente." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error interno del servidor." });
   }
 });
 
@@ -69,19 +133,3 @@ app.put("/paquetes/:id", async (req, res) => {
 app.listen(port, () => {
   console.log(`Servidor ejecutándose en http://localhost:${port}`);
 });
-
-// Probar la conexión a MongoDB
-async function testConnection() {
-  try {
-    await client.connect(); // Conectar al clúster
-    console.log("Conexión exitosa a MongoDB");
-    await client.db("paquetes").command({ ping: 1 }); // Comando para probar conexión
-    console.log("MongoDB está disponible");
-  } catch (error) {
-    console.error("Error al conectar a MongoDB:", error);
-  } finally {
-    await client.close(); // Cierra la conexión
-  }
-}
-
-testConnection(); // Llama a la función para probar
