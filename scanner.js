@@ -5,8 +5,8 @@ const router = express.Router();
 router.post("/recibido", async (req, res) => {
     const { paquete_id } = req.body;
 
-    if (!paquete_id) {
-        return res.status(400).json({ error: "El campo 'paquete_id' es requerido." });
+    if (!paquete_id || typeof paquete_id !== "string") {
+        return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
     }
 
     try {
@@ -19,7 +19,7 @@ router.post("/recibido", async (req, res) => {
         }
 
         // Crea un nuevo paquete con estado "Recibido"
-        const fechaActual = new Date();
+        const fechaActual = new Date().toISOString(); // Fecha en formato estándar
         const nuevoPaquete = {
             paquete_id,
             estado_actual: "Recibido",
@@ -34,7 +34,7 @@ router.post("/recibido", async (req, res) => {
         const resultado = await collection.insertOne(nuevoPaquete);
         res.status(201).json({ message: "Paquete creado exitosamente.", id: resultado.insertedId });
     } catch (error) {
-        console.error("Error al crear paquete:", error);
+        console.error("Error al crear paquete:", error.message);
         res.status(500).json({ error: "Error interno del servidor." });
     }
 });
@@ -43,8 +43,8 @@ router.post("/recibido", async (req, res) => {
 router.put("/en-camino", async (req, res) => {
     const { paquete_id } = req.body;
 
-    if (!paquete_id) {
-        return res.status(400).json({ error: "El campo 'paquete_id' es requerido." });
+    if (!paquete_id || typeof paquete_id !== "string") {
+        return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
     }
 
     try {
@@ -61,7 +61,7 @@ router.put("/en-camino", async (req, res) => {
         }
 
         // Actualiza el estado del paquete a "En Camino"
-        const fechaActual = new Date();
+        const fechaActual = new Date().toISOString();
         const resultado = await collection.updateOne(
             { paquete_id },
             {
@@ -75,9 +75,13 @@ router.put("/en-camino", async (req, res) => {
             }
         );
 
+        if (resultado.modifiedCount === 0) {
+            return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
+        }
+
         res.json({ message: "Paquete marcado como 'En Camino' correctamente." });
     } catch (error) {
-        console.error("Error en el servidor:", error);
+        console.error("Error en el servidor:", error.message);
         res.status(500).json({ error: "Error interno del servidor." });
     }
 });

@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Escáner de Código de Barras</title>
+    <style>
+        #status {
+            margin-top: 10px;
+            font-size: 1rem;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
 </head>
 <body>
     <h1>Escáner de Código de Barras</h1>
@@ -17,22 +31,29 @@
         autofocus
     />
 
-    <p id="status"></p>
+    <p id="status" aria-live="polite"></p>
 
     <script>
-        // Modo inicial
-        let mode = "recibido";
+        let mode = "recibido"; // Modo inicial
 
         // Alternar entre los modos "Recibido" y "En Camino"
         function toggleMode() {
             mode = mode === "recibido" ? "en-camino" : "recibido";
             document.getElementById("mode").innerHTML = `Modo actual: <strong>${mode === "recibido" ? "Recibido" : "En Camino"}</strong>`;
+            clearStatus(); // Limpia cualquier mensaje de estado previo
+        }
+
+        // Limpia el mensaje de estado
+        function clearStatus() {
+            const status = document.getElementById("status");
+            status.innerText = "";
+            status.className = "";
         }
 
         // Función para enviar automáticamente al escanear
         async function sendBarcode(barcode) {
             if (!barcode) {
-                document.getElementById("status").innerText = "Por favor, escanea un código válido.";
+                updateStatus("Por favor, escanea un código válido.", "error");
                 return;
             }
 
@@ -41,6 +62,9 @@
                 mode === "recibido"
                     ? "https://servidor-backend-paquetes.onrender.com/scanner/recibido"
                     : "https://servidor-backend-paquetes.onrender.com/scanner/en-camino";
+
+            const input = document.getElementById("barcodeInput");
+            input.disabled = true; // Desactiva el campo de entrada mientras se procesa
 
             try {
                 const response = await fetch(endpoint, {
@@ -55,18 +79,28 @@
 
                 const result = await response.json();
                 if (response.ok) {
-                    document.getElementById("status").innerText = result.message || "Operación realizada correctamente.";
+                    updateStatus(result.message || "Operación realizada correctamente.", "success");
                 } else {
-                    document.getElementById("status").innerText = result.error || "Ocurrió un error.";
+                    updateStatus(result.error || "Ocurrió un error.", "error");
                 }
             } catch (error) {
                 console.error("Error al enviar los datos:", error);
-                document.getElementById("status").innerText = "Error al conectar con el servidor.";
+                updateStatus("Error al conectar con el servidor.", "error");
             } finally {
-                // Limpia el campo de entrada después de procesar
-                document.getElementById("barcodeInput").value = "";
-                document.getElementById("barcodeInput").focus();
+                input.value = ""; // Limpia el campo de entrada
+                input.disabled = false; // Reactiva el campo de entrada
+                input.focus(); // Devuelve el foco al campo
             }
+        }
+
+        // Actualiza el mensaje de estado con clases de estilo
+        function updateStatus(message, statusClass) {
+            const status = document.getElementById("status");
+            status.innerText = message;
+            status.className = statusClass;
+
+            // Limpia el mensaje automáticamente después de 5 segundos
+            setTimeout(clearStatus, 5000);
         }
 
         // Detectar el escaneo y enviar automáticamente

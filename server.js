@@ -1,15 +1,20 @@
 require("dotenv").config(); // Cargar variables de entorno desde .env
 const express = require("express");
+const cors = require("cors");
 const { MongoClient } = require("mongodb");
+const path = require("path"); // Importar módulo path para manejo de rutas
 const scannerRoutes = require("./scanner"); // Importar rutas del escáner
 
-const app = express(); // Inicialización correcta de express
+const app = express();
 const port = process.env.PORT || 3000; // Usa el puerto dinámico o 3000 por defecto
+
+// Middleware para habilitar CORS (solución para posibles problemas con frontend)
+app.use(cors());
 
 // Middleware para procesar JSON
 app.use(express.json());
 
-// Middleware para registrar solicitudes entrantes (útil para depurar en Render)
+// Middleware para registrar solicitudes entrantes (útil para depuración)
 app.use((req, res, next) => {
   console.log(`Solicitud recibida: ${req.method} ${req.url}`);
   next();
@@ -37,6 +42,9 @@ const client = new MongoClient(uri);
     process.exit(1); // Salir si no se puede conectar
   }
 })();
+
+// Middleware para servir archivos estáticos desde la carpeta "public"
+app.use(express.static(path.join(__dirname, "public")));
 
 // Ruta de prueba para confirmar que el servidor está funcionando
 app.get("/", (req, res) => {
