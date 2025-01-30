@@ -57,6 +57,9 @@
                 return;
             }
 
+            // ✅ Reemplazar comillas simples por guiones
+            const sanitizedBarcode = barcode.replace(/'/g, "-");
+
             // Configurar el endpoint según el modo
             const endpoint =
                 mode === "recibido"
@@ -73,7 +76,7 @@
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        paquete_id: barcode,
+                        paquete_id: sanitizedBarcode, // 🔹 Enviar código sanitizado
                     }),
                 });
 
