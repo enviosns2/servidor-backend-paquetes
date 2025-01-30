@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -50,14 +50,14 @@
             status.className = "";
         }
 
-        // Función para enviar automáticamente al escanear
+        // ✅ Función para sanitizar antes de enviar
         async function sendBarcode(barcode) {
             if (!barcode) {
                 updateStatus("Por favor, escanea un código válido.", "error");
                 return;
             }
 
-            // ✅ Reemplazar comillas simples por guiones
+            // 🔹 Reemplazar comillas simples por guiones
             const sanitizedBarcode = barcode.replace(/'/g, "-");
 
             // Configurar el endpoint según el modo
@@ -106,10 +106,14 @@
             setTimeout(clearStatus, 5000);
         }
 
-        // Detectar el escaneo y enviar automáticamente
+        // ✅ Detectar el escaneo y sanitizar antes de enviar
         document.getElementById("barcodeInput").addEventListener("keypress", function (event) {
             if (event.key === "Enter") {
-                const barcode = document.getElementById("barcodeInput").value.trim();
+                let barcode = document.getElementById("barcodeInput").value.trim();
+
+                // 🔹 Sanitizar input antes de enviar
+                barcode = barcode.replace(/'/g, "-");
+
                 sendBarcode(barcode);
             }
         });
