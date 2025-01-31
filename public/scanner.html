@@ -50,6 +50,11 @@
             status.className = "";
         }
 
+        // ✅ Detectar y reemplazar comillas en tiempo real
+        document.getElementById("barcodeInput").addEventListener("input", function (event) {
+            this.value = this.value.replace(/'/g, "-"); // 🔹 Reemplaza en tiempo real
+        });
+
         // ✅ Función para sanitizar antes de enviar
         async function sendBarcode(barcode) {
             if (!barcode) {
@@ -57,7 +62,7 @@
                 return;
             }
 
-            // 🔹 Reemplazar comillas simples por guiones
+            // 🔹 Sanitizar de nuevo antes de enviar (doble seguridad)
             const sanitizedBarcode = barcode.replace(/'/g, "-");
 
             // Configurar el endpoint según el modo
