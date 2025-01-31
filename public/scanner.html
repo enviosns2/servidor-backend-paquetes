@@ -51,7 +51,7 @@
         }
 
         // ✅ Detectar y reemplazar comillas en tiempo real
-        document.getElementById("barcodeInput").addEventListener("input", function (event) {
+        document.getElementById("barcodeInput").addEventListener("input", function () {
             this.value = this.value.replace(/'/g, "-"); // 🔹 Reemplaza en tiempo real
         });
 
@@ -62,7 +62,7 @@
                 return;
             }
 
-            // 🔹 Sanitizar de nuevo antes de enviar (doble seguridad)
+            // 🔹 Sanitizar antes de enviar (doble seguridad)
             const sanitizedBarcode = barcode.replace(/'/g, "-");
 
             // Configurar el endpoint según el modo
