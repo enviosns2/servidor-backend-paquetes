@@ -17,6 +17,12 @@
         .error {
             color: red;
         }
+
+        #asciiOutput {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: blue;
+        }
     </style>
 </head>
 <body>
@@ -32,6 +38,7 @@
     />
 
     <p id="status" aria-live="polite"></p>
+    <p id="asciiOutput">Códigos ASCII detectados: <span></span></p>
 
     <script>
         let mode = "recibido"; // Modo inicial
@@ -50,9 +57,16 @@
             status.className = "";
         }
 
-        // ✅ Función para sanitizar en tiempo real (corrige caracteres incorrectos)
+        // ✅ Función para mostrar el código ASCII de cada carácter ingresado
+        function showAsciiValues(text) {
+            const asciiOutput = document.getElementById("asciiOutput").querySelector("span");
+            asciiOutput.innerText = text.split("").map(char => `U+${char.charCodeAt(0).toString(16).toUpperCase()}`).join(" ");
+        }
+
+        // ✅ Sanitiza en tiempo real Y muestra los códigos ASCII
         document.getElementById("barcodeInput").addEventListener("input", function (event) {
-            this.value = this.value.replace(/[\u0027\u2018\u2019]/g, "-"); // 🔹 Reemplaza TODAS las variantes de comilla simple
+            showAsciiValues(this.value); // 📌 Muestra los códigos ASCII en pantalla
+            this.value = this.value.replace(/[\u0027]/g, "-"); // 🔹 Sustituye SOLO la comilla simple estándar U+0027
         });
 
         // ✅ Función para sanitizar antes de enviar
@@ -62,8 +76,8 @@
                 return;
             }
 
-            // 🔹 Sanitizar antes de enviar (doble seguridad)
-            const sanitizedBarcode = barcode.replace(/[\u0027\u2018\u2019]/g, "-");
+            // 🔹 Sanitizar antes de enviar
+            const sanitizedBarcode = barcode.replace(/[\u0027]/g, "-"); 
 
             // Configurar el endpoint según el modo
             const endpoint =
@@ -117,7 +131,7 @@
                 let barcode = document.getElementById("barcodeInput").value.trim();
 
                 // 🔹 Sanitizar input antes de enviar
-                barcode = barcode.replace(/[\u0027\u2018\u2019]/g, "-");
+                barcode = barcode.replace(/[\u0027]/g, "-");
 
                 sendBarcode(barcode);
             }
