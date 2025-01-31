@@ -50,9 +50,9 @@
             status.className = "";
         }
 
-        // ✅ Detectar y reemplazar comillas en tiempo real
-        document.getElementById("barcodeInput").addEventListener("input", function () {
-            this.value = this.value.replace(/'/g, "-"); // 🔹 Reemplaza en tiempo real
+        // ✅ Función para sanitizar en tiempo real (corrige caracteres incorrectos)
+        document.getElementById("barcodeInput").addEventListener("input", function (event) {
+            this.value = this.value.replace(/[\u0027\u2018\u2019]/g, "-"); // 🔹 Reemplaza TODAS las variantes de comilla simple
         });
 
         // ✅ Función para sanitizar antes de enviar
@@ -63,7 +63,7 @@
             }
 
             // 🔹 Sanitizar antes de enviar (doble seguridad)
-            const sanitizedBarcode = barcode.replace(/'/g, "-");
+            const sanitizedBarcode = barcode.replace(/[\u0027\u2018\u2019]/g, "-");
 
             // Configurar el endpoint según el modo
             const endpoint =
@@ -117,7 +117,7 @@
                 let barcode = document.getElementById("barcodeInput").value.trim();
 
                 // 🔹 Sanitizar input antes de enviar
-                barcode = barcode.replace(/'/g, "-");
+                barcode = barcode.replace(/[\u0027\u2018\u2019]/g, "-");
 
                 sendBarcode(barcode);
             }
