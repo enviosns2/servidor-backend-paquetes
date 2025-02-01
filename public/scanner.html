@@ -27,17 +27,10 @@
   <p id="mode">Modo actual: <strong>Recibido</strong></p>
   <button onclick="toggleMode()">Cambiar Modo</button>
 
-  <input
-    type="text"
-    id="barcodeInput"
-    placeholder="Escanea el código aquí"
-    autofocus
-  />
+  <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus />
 
   <p id="status" aria-live="polite"></p>
-  <p id="asciiOutput">
-    Códigos ASCII detectados: <span></span>
-  </p>
+  <p id="asciiOutput">Códigos ASCII detectados: <span></span></p>
 
   <script>
     let mode = "recibido"; // Modo inicial
@@ -60,35 +53,46 @@
 
     // Muestra en pantalla los códigos ASCII de cada carácter del texto
     function showAsciiValues(text) {
-      const asciiOutput = document
-        .getElementById("asciiOutput")
-        .querySelector("span");
+      const asciiOutput = document.getElementById("asciiOutput").querySelector("span");
       asciiOutput.innerText = text
         .split("")
         .map((char) => `U+${char.charCodeAt(0).toString(16).toUpperCase()}`)
         .join(" ");
     }
 
-    // Función que realiza la sanitización: reemplaza el apostrofe (U+0027) por guion (U+002D)
+    // Función de sanitización manual: recorre cada carácter y reemplaza el apostrofe (U+0027) por guion (U+002D)
     function sanitizeInput(value) {
-      return value.replace(/'/g, "-");
+      let sanitized = "";
+      for (let i = 0; i < value.length; i++) {
+        if (value.charCodeAt(i) === 39) { // 39 (U+0027)
+          sanitized += "-";             // 45 (U+002D)
+        } else {
+          sanitized += value.charAt(i);
+        }
+      }
+      return sanitized;
     }
 
     const barcodeInput = document.getElementById("barcodeInput");
 
-    // Evento "input": cada vez que se ingresa texto se sanitiza
+    // Evento "input": se sanitiza el valor al escribir y se actualiza la visualización
     barcodeInput.addEventListener("input", function () {
       this.value = sanitizeInput(this.value);
       showAsciiValues(this.value);
     });
 
     // Evento "paste": si se pega texto, se sanitiza inmediatamente
-    barcodeInput.addEventListener("paste", function (event) {
-      // Usamos un pequeño retraso para que se complete el pegado
+    barcodeInput.addEventListener("paste", function () {
       setTimeout(() => {
         this.value = sanitizeInput(this.value);
         showAsciiValues(this.value);
       }, 50);
+    });
+
+    // Evento "keyup": forzamos nuevamente la sanitización al soltar la tecla
+    barcodeInput.addEventListener("keyup", function () {
+      this.value = sanitizeInput(this.value);
+      showAsciiValues(this.value);
     });
 
     // Función para sanitizar y enviar el código
@@ -98,8 +102,14 @@
         return;
       }
 
-      // Sanitización final antes de enviar (por si alguna vez se omitió en el input)
+      // Sanitización final antes de enviar (por si acaso)
       const sanitizedBarcode = sanitizeInput(barcode);
+
+      // Para depuración: imprimir en consola cada carácter del valor final
+      console.log("Código final para enviar:");
+      for (let i = 0; i < sanitizedBarcode.length; i++) {
+        console.log(sanitizedBarcode.charAt(i) + " => U+" + sanitizedBarcode.charCodeAt(i).toString(16).toUpperCase());
+      }
 
       // Configurar el endpoint según el modo actual
       const endpoint =
@@ -108,22 +118,15 @@
           : "https://servidor-backend-paquetes.onrender.com/scanner/en-camino";
 
       barcodeInput.disabled = true;
-
       try {
         const response = await fetch(endpoint, {
           method: mode === "recibido" ? "POST" : "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paquete_id: sanitizedBarcode,
-          }),
+          body: JSON.stringify({ paquete_id: sanitizedBarcode })
         });
-
         const result = await response.json();
         if (response.ok) {
-          updateStatus(
-            result.message || "Operación realizada correctamente.",
-            "success"
-          );
+          updateStatus(result.message || "Operación realizada correctamente.", "success");
         } else {
           updateStatus(result.error || "Ocurrió un error.", "error");
         }
@@ -145,17 +148,16 @@
       setTimeout(clearStatus, 5000);
     }
 
-    // Detecta la tecla Enter y envía el código, garantizando la sanitización
+    // Evento "keydown": detecta la tecla Enter y, con un retraso, envía el código sanitizado
     barcodeInput.addEventListener("keydown", function (event) {
       if (event.key === "Enter") {
         event.preventDefault();
-        // Se introduce un pequeño retraso para permitir que el evento "input" procese el reemplazo
+        // Se introduce un retraso de 150 ms para asegurar que la sanitización se procese
         setTimeout(() => {
-          let barcode = this.value.trim();
-          barcode = sanitizeInput(barcode); // Sanitización final
-          console.log("Código sanitizado:", barcode);
+          let barcode = sanitizeInput(this.value.trim());
+          console.log("Código sanitizado antes de enviar:", barcode);
           sendBarcode(barcode);
-        }, 150); // Puedes ajustar el retraso si es necesario
+        }, 150);
       }
     });
   </script>
