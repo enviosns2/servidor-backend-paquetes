@@ -69,11 +69,26 @@
         .join(" ");
     }
 
-    // Evento "input": cada vez que se ingresa texto se reemplaza el apostrofe (') por un guion (-)
-    document.getElementById("barcodeInput").addEventListener("input", function () {
-      // Reemplaza todas las ocurrencias de ' (U+0027) por - (U+002D)
-      this.value = this.value.replace(/'/g, "-");
+    // Función que realiza la sanitización: reemplaza el apostrofe (U+0027) por guion (U+002D)
+    function sanitizeInput(value) {
+      return value.replace(/'/g, "-");
+    }
+
+    const barcodeInput = document.getElementById("barcodeInput");
+
+    // Evento "input": cada vez que se ingresa texto se sanitiza
+    barcodeInput.addEventListener("input", function () {
+      this.value = sanitizeInput(this.value);
       showAsciiValues(this.value);
+    });
+
+    // Evento "paste": si se pega texto, se sanitiza inmediatamente
+    barcodeInput.addEventListener("paste", function (event) {
+      // Usamos un pequeño retraso para que se complete el pegado
+      setTimeout(() => {
+        this.value = sanitizeInput(this.value);
+        showAsciiValues(this.value);
+      }, 50);
     });
 
     // Función para sanitizar y enviar el código
@@ -83,8 +98,8 @@
         return;
       }
 
-      // Sanitización final: reemplaza los apostrofes por guiones
-      const sanitizedBarcode = barcode.replace(/'/g, "-");
+      // Sanitización final antes de enviar (por si alguna vez se omitió en el input)
+      const sanitizedBarcode = sanitizeInput(barcode);
 
       // Configurar el endpoint según el modo actual
       const endpoint =
@@ -92,8 +107,7 @@
           ? "https://servidor-backend-paquetes.onrender.com/scanner/recibido"
           : "https://servidor-backend-paquetes.onrender.com/scanner/en-camino";
 
-      const input = document.getElementById("barcodeInput");
-      input.disabled = true;
+      barcodeInput.disabled = true;
 
       try {
         const response = await fetch(endpoint, {
@@ -117,9 +131,9 @@
         console.error("Error al enviar los datos:", error);
         updateStatus("Error al conectar con el servidor.", "error");
       } finally {
-        input.value = "";
-        input.disabled = false;
-        input.focus();
+        barcodeInput.value = "";
+        barcodeInput.disabled = false;
+        barcodeInput.focus();
       }
     }
 
@@ -132,14 +146,16 @@
     }
 
     // Detecta la tecla Enter y envía el código, garantizando la sanitización
-    document.getElementById("barcodeInput").addEventListener("keydown", function (event) {
+    barcodeInput.addEventListener("keydown", function (event) {
       if (event.key === "Enter") {
         event.preventDefault();
-        let barcode = this.value.trim();
-        // Sanitiza nuevamente por si acaso antes de enviar
-        barcode = barcode.replace(/'/g, "-");
-        console.log("Código sanitizado:", barcode);
-        sendBarcode(barcode);
+        // Se introduce un pequeño retraso para permitir que el evento "input" procese el reemplazo
+        setTimeout(() => {
+          let barcode = this.value.trim();
+          barcode = sanitizeInput(barcode); // Sanitización final
+          console.log("Código sanitizado:", barcode);
+          sendBarcode(barcode);
+        }, 150); // Puedes ajustar el retraso si es necesario
       }
     });
   </script>
