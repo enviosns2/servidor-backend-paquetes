@@ -44,7 +44,7 @@
       function toggleMode() {
           mode = mode === "recibido" ? "en-camino" : "recibido";
           document.getElementById("mode").innerHTML = `Modo actual: <strong>${mode === "recibido" ? "Recibido" : "En Camino"}</strong>`;
-          clearStatus(); // Limpia cualquier mensaje de estado previo
+          clearStatus();
       }
 
       // Limpia el mensaje de estado
@@ -60,11 +60,11 @@
           asciiOutput.innerText = text.split("").map(char => `U+${char.charCodeAt(0).toString(16).toUpperCase()}`).join(" ");
       }
 
-      // Función que sanitiza en tiempo real y muestra los códigos ASCII
+      // Sanitiza en tiempo real y muestra los códigos ASCII
       document.getElementById("barcodeInput").addEventListener("input", function (event) {
           showAsciiValues(this.value);
-          // Reemplaza los caracteres no deseados (que podrían estar sustituyendo el guion) por el guion estándar
-          this.value = this.value.replace(/[\u0027\u00B4\u2018\u2019]/g, "-");
+          // Reemplaza comilla simple y variantes (' ’ ´ `) por guion
+          this.value = this.value.replace(/['’´`]/g, "-");
       });
 
       // Función para sanitizar antes de enviar
@@ -74,8 +74,8 @@
               return;
           }
 
-          // Sanitizar antes de enviar (reemplaza los caracteres incorrectos por guion)
-          const sanitizedBarcode = barcode.replace(/[\u0027\u00B4\u2018\u2019]/g, "-");
+          // Sanitizar antes de enviar
+          const sanitizedBarcode = barcode.replace(/['’´`]/g, "-");
 
           // Configurar el endpoint según el modo
           const endpoint =
@@ -84,7 +84,7 @@
                   : "https://servidor-backend-paquetes.onrender.com/scanner/en-camino";
 
           const input = document.getElementById("barcodeInput");
-          input.disabled = true; // Desactiva el campo de entrada mientras se procesa
+          input.disabled = true;
 
           try {
               const response = await fetch(endpoint, {
@@ -107,9 +107,9 @@
               console.error("Error al enviar los datos:", error);
               updateStatus("Error al conectar con el servidor.", "error");
           } finally {
-              input.value = ""; // Limpia el campo de entrada
-              input.disabled = false; // Reactiva el campo de entrada
-              input.focus(); // Devuelve el foco al campo
+              input.value = "";
+              input.disabled = false;
+              input.focus();
           }
       }
 
@@ -118,17 +118,14 @@
           const status = document.getElementById("status");
           status.innerText = message;
           status.className = statusClass;
-
-          // Limpia el mensaje automáticamente después de 5 segundos
           setTimeout(clearStatus, 5000);
       }
 
       // Detectar el escaneo y sanitizar antes de enviar
       document.getElementById("barcodeInput").addEventListener("keypress", function (event) {
           if (event.key === "Enter") {
-              let barcode = document.getElementById("barcodeInput").value.trim();
-              // Sanitizar input antes de enviar
-              barcode = barcode.replace(/[\u0027\u00B4\u2018\u2019]/g, "-");
+              let barcode = this.value.trim();
+              barcode = barcode.replace(/['’´`]/g, "-");
               sendBarcode(barcode);
           }
       });
