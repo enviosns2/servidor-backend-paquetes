@@ -1,141 +1,137 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escáner de Código de Barras</title>
-    <style>
-        #status {
-            margin-top: 10px;
-            font-size: 1rem;
-        }
-
-        .success {
-            color: green;
-        }
-
-        .error {
-            color: red;
-        }
-
-        #asciiOutput {
-            margin-top: 10px;
-            font-size: 0.9rem;
-            color: blue;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escáner de Código de Barras</title>
+  <style>
+      #status {
+          margin-top: 10px;
+          font-size: 1rem;
+      }
+      .success {
+          color: green;
+      }
+      .error {
+          color: red;
+      }
+      #asciiOutput {
+          margin-top: 10px;
+          font-size: 0.9rem;
+          color: blue;
+      }
+  </style>
 </head>
 <body>
-    <h1>Escáner de Código de Barras</h1>
-    <p id="mode">Modo actual: <strong>Recibido</strong></p>
-    <button onclick="toggleMode()">Cambiar Modo</button>
+  <h1>Escáner de Código de Barras</h1>
+  <p id="mode">Modo actual: <strong>Recibido</strong></p>
+  <button onclick="toggleMode()">Cambiar Modo</button>
 
-    <input
-        type="text"
-        id="barcodeInput"
-        placeholder="Escanea el código aquí"
-        autofocus
-    />
+  <input
+      type="text"
+      id="barcodeInput"
+      placeholder="Escanea el código aquí"
+      autofocus
+  />
 
-    <p id="status" aria-live="polite"></p>
-    <p id="asciiOutput">Códigos ASCII detectados: <span></span></p>
+  <p id="status" aria-live="polite"></p>
+  <p id="asciiOutput">Códigos ASCII detectados: <span></span></p>
 
-    <script>
-        let mode = "recibido"; // Modo inicial
+  <script>
+      let mode = "recibido"; // Modo inicial
 
-        // Alternar entre los modos "Recibido" y "En Camino"
-        function toggleMode() {
-            mode = mode === "recibido" ? "en-camino" : "recibido";
-            document.getElementById("mode").innerHTML = `Modo actual: <strong>${mode === "recibido" ? "Recibido" : "En Camino"}</strong>`;
-            clearStatus(); // Limpia cualquier mensaje de estado previo
-        }
+      // Alternar entre los modos "Recibido" y "En Camino"
+      function toggleMode() {
+          mode = mode === "recibido" ? "en-camino" : "recibido";
+          document.getElementById("mode").innerHTML = `Modo actual: <strong>${mode === "recibido" ? "Recibido" : "En Camino"}</strong>`;
+          clearStatus(); // Limpia cualquier mensaje de estado previo
+      }
 
-        // Limpia el mensaje de estado
-        function clearStatus() {
-            const status = document.getElementById("status");
-            status.innerText = "";
-            status.className = "";
-        }
+      // Limpia el mensaje de estado
+      function clearStatus() {
+          const status = document.getElementById("status");
+          status.innerText = "";
+          status.className = "";
+      }
 
-        // ✅ Función para mostrar el código ASCII de cada carácter ingresado
-        function showAsciiValues(text) {
-            const asciiOutput = document.getElementById("asciiOutput").querySelector("span");
-            asciiOutput.innerText = text.split("").map(char => `U+${char.charCodeAt(0).toString(16).toUpperCase()}`).join(" ");
-        }
+      // Función para mostrar el código ASCII de cada carácter ingresado
+      function showAsciiValues(text) {
+          const asciiOutput = document.getElementById("asciiOutput").querySelector("span");
+          asciiOutput.innerText = text.split("").map(char => `U+${char.charCodeAt(0).toString(16).toUpperCase()}`).join(" ");
+      }
 
-        // ✅ Sanitiza en tiempo real Y muestra los códigos ASCII
-        document.getElementById("barcodeInput").addEventListener("input", function (event) {
-            showAsciiValues(this.value); // 📌 Muestra los códigos ASCII en pantalla
-            this.value = this.value.replace(/[\u0027]/g, "-"); // 🔹 Sustituye SOLO la comilla simple estándar U+0027
-        });
+      // Función que sanitiza en tiempo real y muestra los códigos ASCII
+      document.getElementById("barcodeInput").addEventListener("input", function (event) {
+          showAsciiValues(this.value);
+          // Reemplaza los caracteres no deseados (que podrían estar sustituyendo el guion) por el guion estándar
+          this.value = this.value.replace(/[\u0027\u00B4\u2018\u2019]/g, "-");
+      });
 
-        // ✅ Función para sanitizar antes de enviar
-        async function sendBarcode(barcode) {
-            if (!barcode) {
-                updateStatus("Por favor, escanea un código válido.", "error");
-                return;
-            }
+      // Función para sanitizar antes de enviar
+      async function sendBarcode(barcode) {
+          if (!barcode) {
+              updateStatus("Por favor, escanea un código válido.", "error");
+              return;
+          }
 
-            // 🔹 Sanitizar antes de enviar
-            const sanitizedBarcode = barcode.replace(/[\u0027]/g, "-"); 
+          // Sanitizar antes de enviar (reemplaza los caracteres incorrectos por guion)
+          const sanitizedBarcode = barcode.replace(/[\u0027\u00B4\u2018\u2019]/g, "-");
 
-            // Configurar el endpoint según el modo
-            const endpoint =
-                mode === "recibido"
-                    ? "https://servidor-backend-paquetes.onrender.com/scanner/recibido"
-                    : "https://servidor-backend-paquetes.onrender.com/scanner/en-camino";
+          // Configurar el endpoint según el modo
+          const endpoint =
+              mode === "recibido"
+                  ? "https://servidor-backend-paquetes.onrender.com/scanner/recibido"
+                  : "https://servidor-backend-paquetes.onrender.com/scanner/en-camino";
 
-            const input = document.getElementById("barcodeInput");
-            input.disabled = true; // Desactiva el campo de entrada mientras se procesa
+          const input = document.getElementById("barcodeInput");
+          input.disabled = true; // Desactiva el campo de entrada mientras se procesa
 
-            try {
-                const response = await fetch(endpoint, {
-                    method: mode === "recibido" ? "POST" : "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        paquete_id: sanitizedBarcode, // 🔹 Enviar código sanitizado
-                    }),
-                });
+          try {
+              const response = await fetch(endpoint, {
+                  method: mode === "recibido" ? "POST" : "PUT",
+                  headers: {
+                      "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                      paquete_id: sanitizedBarcode,
+                  }),
+              });
 
-                const result = await response.json();
-                if (response.ok) {
-                    updateStatus(result.message || "Operación realizada correctamente.", "success");
-                } else {
-                    updateStatus(result.error || "Ocurrió un error.", "error");
-                }
-            } catch (error) {
-                console.error("Error al enviar los datos:", error);
-                updateStatus("Error al conectar con el servidor.", "error");
-            } finally {
-                input.value = ""; // Limpia el campo de entrada
-                input.disabled = false; // Reactiva el campo de entrada
-                input.focus(); // Devuelve el foco al campo
-            }
-        }
+              const result = await response.json();
+              if (response.ok) {
+                  updateStatus(result.message || "Operación realizada correctamente.", "success");
+              } else {
+                  updateStatus(result.error || "Ocurrió un error.", "error");
+              }
+          } catch (error) {
+              console.error("Error al enviar los datos:", error);
+              updateStatus("Error al conectar con el servidor.", "error");
+          } finally {
+              input.value = ""; // Limpia el campo de entrada
+              input.disabled = false; // Reactiva el campo de entrada
+              input.focus(); // Devuelve el foco al campo
+          }
+      }
 
-        // Actualiza el mensaje de estado con clases de estilo
-        function updateStatus(message, statusClass) {
-            const status = document.getElementById("status");
-            status.innerText = message;
-            status.className = statusClass;
+      // Actualiza el mensaje de estado con clases de estilo
+      function updateStatus(message, statusClass) {
+          const status = document.getElementById("status");
+          status.innerText = message;
+          status.className = statusClass;
 
-            // Limpia el mensaje automáticamente después de 5 segundos
-            setTimeout(clearStatus, 5000);
-        }
+          // Limpia el mensaje automáticamente después de 5 segundos
+          setTimeout(clearStatus, 5000);
+      }
 
-        // ✅ Detectar el escaneo y sanitizar antes de enviar
-        document.getElementById("barcodeInput").addEventListener("keypress", function (event) {
-            if (event.key === "Enter") {
-                let barcode = document.getElementById("barcodeInput").value.trim();
-
-                // 🔹 Sanitizar input antes de enviar
-                barcode = barcode.replace(/[\u0027]/g, "-");
-
-                sendBarcode(barcode);
-            }
-        });
-    </script>
+      // Detectar el escaneo y sanitizar antes de enviar
+      document.getElementById("barcodeInput").addEventListener("keypress", function (event) {
+          if (event.key === "Enter") {
+              let barcode = document.getElementById("barcodeInput").value.trim();
+              // Sanitizar input antes de enviar
+              barcode = barcode.replace(/[\u0027\u00B4\u2018\u2019]/g, "-");
+              sendBarcode(barcode);
+          }
+      });
+  </script>
 </body>
 </html>
