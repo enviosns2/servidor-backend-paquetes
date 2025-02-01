@@ -42,7 +42,7 @@
   <script>
     let mode = "recibido"; // Modo inicial
 
-    // Alternar entre los modos "Recibido" y "En Camino"
+    // Alterna entre "Recibido" y "En Camino"
     function toggleMode() {
       mode = mode === "recibido" ? "en-camino" : "recibido";
       document.getElementById("mode").innerHTML = `Modo actual: <strong>${
@@ -58,7 +58,7 @@
       status.className = "";
     }
 
-    // Función para mostrar el código ASCII de cada carácter ingresado
+    // Muestra en pantalla los códigos ASCII de cada carácter del texto
     function showAsciiValues(text) {
       const asciiOutput = document
         .getElementById("asciiOutput")
@@ -69,42 +69,36 @@
         .join(" ");
     }
 
-    // Sanitiza en tiempo real y muestra los códigos ASCII.
-    // Se reemplaza explícitamente el carácter U+0027 (')
-    document
-      .getElementById("barcodeInput")
-      .addEventListener("input", function (event) {
-        showAsciiValues(this.value);
-        // Reemplaza todas las ocurrencias de U+0027 por guion (U+002D)
-        this.value = this.value.replace(/\u0027/g, "-");
-      });
+    // Evento "input": cada vez que se ingresa texto se reemplaza el apostrofe (') por un guion (-)
+    document.getElementById("barcodeInput").addEventListener("input", function () {
+      // Reemplaza todas las ocurrencias de ' (U+0027) por - (U+002D)
+      this.value = this.value.replace(/'/g, "-");
+      showAsciiValues(this.value);
+    });
 
-    // Función para sanitizar antes de enviar y enviar el código
+    // Función para sanitizar y enviar el código
     async function sendBarcode(barcode) {
       if (!barcode) {
         updateStatus("Por favor, escanea un código válido.", "error");
         return;
       }
 
-      // Sanitización final justo antes de enviar:
-      // Reemplaza todas las ocurrencias de U+0027 por un guion.
-      const sanitizedBarcode = barcode.replace(/\u0027/g, "-");
+      // Sanitización final: reemplaza los apostrofes por guiones
+      const sanitizedBarcode = barcode.replace(/'/g, "-");
 
-      // Configurar el endpoint según el modo
+      // Configurar el endpoint según el modo actual
       const endpoint =
         mode === "recibido"
           ? "https://servidor-backend-paquetes.onrender.com/scanner/recibido"
           : "https://servidor-backend-paquetes.onrender.com/scanner/en-camino";
 
       const input = document.getElementById("barcodeInput");
-      input.disabled = true; // Desactiva el campo mientras se procesa
+      input.disabled = true;
 
       try {
         const response = await fetch(endpoint, {
           method: mode === "recibido" ? "POST" : "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             paquete_id: sanitizedBarcode,
           }),
@@ -129,30 +123,25 @@
       }
     }
 
-    // Actualiza el mensaje de estado con clases de estilo
+    // Actualiza el mensaje de estado (con un tiempo de limpieza)
     function updateStatus(message, statusClass) {
       const status = document.getElementById("status");
       status.innerText = message;
       status.className = statusClass;
-
-      // Limpia el mensaje automáticamente después de 5 segundos
       setTimeout(clearStatus, 5000);
     }
 
-    // Detectar el escaneo y sanitizar antes de enviar utilizando "keydown"
-    document
-      .getElementById("barcodeInput")
-      .addEventListener("keydown", function (event) {
-        if (event.key === "Enter") {
-          event.preventDefault(); // Evita el comportamiento por defecto
-          let barcode = this.value.trim();
-          // Sanitiza reemplazando el carácter U+0027 (')
-          barcode = barcode.replace(/\u0027/g, "-");
-          // (Opcional) Muestra en consola el código sanitizado para depuración
-          console.log("Código sanitizado:", barcode);
-          sendBarcode(barcode);
-        }
-      });
+    // Detecta la tecla Enter y envía el código, garantizando la sanitización
+    document.getElementById("barcodeInput").addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        let barcode = this.value.trim();
+        // Sanitiza nuevamente por si acaso antes de enviar
+        barcode = barcode.replace(/'/g, "-");
+        console.log("Código sanitizado:", barcode);
+        sendBarcode(barcode);
+      }
+    });
   </script>
 </body>
 </html>
