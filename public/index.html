@@ -13,11 +13,9 @@
       margin-top: 10px;
       font-size: 1rem;
     }
-
     .success {
       color: green;
     }
-
     .error {
       color: red;
     }
@@ -38,13 +36,22 @@
   <p id="status" aria-live="polite"></p>
 
   <script>
+    console.log("Script cargado correctamente");
+
     let mode = "recibido"; // Modo inicial
 
-    // Alternar entre los modos "Recibido" y "En Camino"
+    // Función de sanitización:
+    // Reemplaza cualquier carácter que NO sea dígito o letra (0-9, a-z, A-Z) por un guion (-)
+    function sanitizeInput(value) {
+      return value.replace(/[^0-9a-zA-Z]/g, "-");
+    }
+
+    // Alterna entre los modos "Recibido" y "En Camino"
     function toggleMode() {
       mode = mode === "recibido" ? "en-camino" : "recibido";
-      document.getElementById("mode").innerHTML = `Modo actual: <strong>${mode === "recibido" ? "Recibido" : "En Camino"}</strong>`;
-      clearStatus(); // Limpia cualquier mensaje de estado previo
+      document.getElementById("mode").innerHTML =
+        `Modo actual: <strong>${mode === "recibido" ? "Recibido" : "En Camino"}</strong>`;
+      clearStatus();
     }
 
     // Limpia el mensaje de estado
@@ -54,9 +61,11 @@
       status.className = "";
     }
 
-    // Función para enviar automáticamente al escanear
+    // Función para enviar automáticamente el código escaneado
     async function sendBarcode(barcode) {
-      if (!barcode) {
+      // Sanitizamos el código antes de enviarlo
+      const sanitizedBarcode = sanitizeInput(barcode);
+      if (!sanitizedBarcode) {
         updateStatus("Por favor, escanea un código válido.", "error");
         return;
       }
@@ -77,7 +86,7 @@
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            paquete_id: barcode,
+            paquete_id: sanitizedBarcode,
           }),
         });
 
@@ -102,15 +111,15 @@
       const status = document.getElementById("status");
       status.innerText = message;
       status.className = statusClass;
-
       // Limpia el mensaje automáticamente después de 5 segundos
       setTimeout(clearStatus, 5000);
     }
 
-    // Detectar el escaneo y enviar automáticamente
+    // Detectar el escaneo y enviar automáticamente (al presionar Enter)
     document.getElementById("barcodeInput").addEventListener("keypress", function (event) {
       if (event.key === "Enter") {
-        const barcode = document.getElementById("barcodeInput").value.trim();
+        // Se toma el valor actual, se limpia los espacios y se sanitiza
+        const barcode = sanitizeInput(document.getElementById("barcodeInput").value.trim());
         sendBarcode(barcode);
       }
     });
