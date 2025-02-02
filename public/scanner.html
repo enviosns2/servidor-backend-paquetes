@@ -58,15 +58,22 @@
         .join(" ");
     }
 
-    // Función de sanitización: reemplaza todo lo que no sea un número o letra (0-9, a-z, A-Z) por un guion (-)
+    // Función de sanitización: reemplaza cualquier carácter que NO sea dígito o letra (0-9, a-z, A-Z) por un guion (-)
     function sanitizeInput(value) {
-      console.log("SanitizeInput - Valor original:", value);
+      console.log("sanitizeInput - Valor original:", value);
       const sanitized = value.replace(/[^0-9a-zA-Z]/g, "-");
-      console.log("SanitizeInput - Valor sanitizado:", sanitized);
+      console.log("sanitizeInput - Valor sanitizado:", sanitized);
       return sanitized;
     }
 
     const barcodeInput = document.getElementById("barcodeInput");
+
+    // Evento "beforeinput": (aunque no siempre se dispara, es útil en algunos casos)
+    barcodeInput.addEventListener("beforeinput", function () {
+      console.log("Evento beforeinput - Valor actual:", this.value);
+      this.value = sanitizeInput(this.value);
+      console.log("Evento beforeinput - Valor luego:", this.value);
+    });
 
     // Evento "input": se sanitiza el valor al escribir y se actualiza la visualización
     barcodeInput.addEventListener("input", function () {
@@ -86,7 +93,7 @@
       }, 50);
     });
 
-    // Evento "keyup": se forzará nuevamente la sanitización al soltar la tecla
+    // Evento "keyup": se fuerza la sanitización al soltar la tecla
     barcodeInput.addEventListener("keyup", function () {
       console.log("Evento keyup - Antes:", this.value);
       this.value = sanitizeInput(this.value);
@@ -94,7 +101,7 @@
       showAsciiValues(this.value);
     });
 
-    // Forzar sanitización periódica cada 50 ms (por si el escáner inyecta datos muy rápidamente)
+    // Forzar sanitización periódica cada 25 ms para detectar inyecciones rápidas
     setInterval(() => {
       let currentValue = barcodeInput.value;
       let sanitizedValue = sanitizeInput(currentValue);
@@ -103,7 +110,22 @@
         barcodeInput.value = sanitizedValue;
         showAsciiValues(sanitizedValue);
       }
-    }, 50);
+    }, 25);
+
+    // Usamos un MutationObserver para detectar cualquier cambio en el input
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        // Cuando cambie el valor, forzamos la sanitización
+        let newValue = sanitizeInput(barcodeInput.value);
+        if (barcodeInput.value !== newValue) {
+          console.log("MutationObserver: Cambió el valor a", barcodeInput.value, "-> Sanitizando a", newValue);
+          barcodeInput.value = newValue;
+          showAsciiValues(newValue);
+        }
+      });
+    });
+
+    observer.observe(barcodeInput, { childList: true, characterData: true, subtree: true });
 
     // Función para sanitizar y enviar el código
     async function sendBarcode(barcode) {
