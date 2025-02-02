@@ -33,6 +33,7 @@
   <p id="asciiOutput">Códigos ASCII detectados: <span></span></p>
 
   <script>
+    console.log("Script cargado correctamente");
     let mode = "recibido"; // Modo inicial
 
     // Alterna entre "Recibido" y "En Camino"
@@ -150,6 +151,7 @@
 
       barcodeInput.disabled = true;
       try {
+        console.log("Voy a ejecutar fetch con:", sanitizedBarcode);
         const response = await fetch(endpoint, {
           method: mode === "recibido" ? "POST" : "PUT",
           headers: { "Content-Type": "application/json" },
