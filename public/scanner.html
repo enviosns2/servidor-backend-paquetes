@@ -33,7 +33,9 @@
   <p id="asciiOutput">Códigos ASCII detectados: <span></span></p>
 
   <script>
+    // Este mensaje se debe imprimir inmediatamente en la consola
     console.log("Script cargado correctamente");
+
     let mode = "recibido"; // Modo inicial
 
     // Alterna entre "Recibido" y "En Camino"
@@ -69,7 +71,7 @@
 
     const barcodeInput = document.getElementById("barcodeInput");
 
-    // Evento "beforeinput": (aunque no siempre se dispara, es útil en algunos casos)
+    // Evento "beforeinput": (aunque no siempre se dispara)
     barcodeInput.addEventListener("beforeinput", function () {
       console.log("Evento beforeinput - Valor actual:", this.value);
       this.value = sanitizeInput(this.value);
@@ -113,10 +115,9 @@
       }
     }, 25);
 
-    // Usamos un MutationObserver para detectar cualquier cambio en el input
+    // MutationObserver para detectar cambios en el input
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        // Cuando cambie el valor, forzamos la sanitización
         let newValue = sanitizeInput(barcodeInput.value);
         if (barcodeInput.value !== newValue) {
           console.log("MutationObserver: Cambió el valor a", barcodeInput.value, "-> Sanitizando a", newValue);
