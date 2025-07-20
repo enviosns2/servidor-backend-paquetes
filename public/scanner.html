@@ -26,6 +26,15 @@
   <h1>Escáner de Código de Barras</h1>
   <p id="mode">Modo actual: <strong>Recibido</strong></p>
   <button onclick="toggleMode()">Cambiar Modo</button>
+  <!-- Menú desplegable oculto hasta pulsar el botón -->
+  <select id="modeSelect" style="display:none;">
+    <option value="recibido">Recibido</option>
+    <option value="en-transito-nacional-mx">En tránsito nacional MX</option>
+    <option value="en-transito-nacional-eu">En tránsito nacional EU</option>
+    <option value="en-transito-internacional">En tránsito internacional</option>
+    <option value="en-almacen-eu">En almacén EU</option>
+    <option value="en-almacen-mx">En almacén MX</option>
+  </select>
 
   <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus />
 
@@ -38,12 +47,21 @@
 
     let mode = "recibido"; // Modo inicial
 
-    // Alterna entre "Recibido" y "En Camino"
+    // Muestra/oculta el select cuando se pulsa el botón
     function toggleMode() {
-      mode = mode === "recibido" ? "en-camino" : "recibido";
-      document.getElementById("mode").innerHTML = `Modo actual: <strong>${mode === "recibido" ? "Recibido" : "En Camino"}</strong>`;
-      clearStatus();
+      const sel = document.getElementById("modeSelect");
+      sel.style.display = sel.style.display === "none" ? "inline-block" : "none";
     }
+
+    // Cuando cambias la opción del select, actualiza el modo y la UI
+    document.getElementById("modeSelect").addEventListener("change", function() {
+      mode = this.value;
+      const label = this.options[this.selectedIndex].text;
+      document.getElementById("mode").innerHTML = `Modo actual: <strong>${label}</strong>`;
+      clearStatus();
+      // ocultar de nuevo tras seleccionar
+      this.style.display = "none";
+    });
 
     // Limpia el mensaje de estado
     function clearStatus() {
@@ -126,7 +144,6 @@
         }
       });
     });
-
     observer.observe(barcodeInput, { childList: true, characterData: true, subtree: true });
 
     // Función para sanitizar y enviar el código
@@ -148,7 +165,7 @@
       // Configurar el endpoint según el modo actual
       const endpoint = mode === "recibido"
           ? "https://servidor-backend-paquetes.onrender.com/scanner/recibido"
-          : "https://servidor-backend-paquetes.onrender.com/scanner/en-camino";
+          : `https://servidor-backend-paquetes.onrender.com/scanner/${mode}`;
 
       barcodeInput.disabled = true;
       try {
