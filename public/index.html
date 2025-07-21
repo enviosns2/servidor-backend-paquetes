@@ -24,8 +24,8 @@
       padding: 0 20px;
       z-index: 1000;
     }
-    header .logo img {
-      height: 40px;
+    header .logo {
+      font-weight: bold;
       margin-right: 20px;
     }
     header h1 {
@@ -39,7 +39,7 @@
     }
     aside {
       width: 20%;
-      background: #014235;   /* sidebar en #014235 */
+      background: #f4f4f4;
       padding: 20px;
       box-sizing: border-box;
     }
@@ -47,7 +47,7 @@
       display: flex;
       align-items: center;
       padding: 8px 0;
-      color: #fff;
+      color: #333;
       text-decoration: none;
     }
     aside nav a .icon {
@@ -62,17 +62,15 @@
 
     /* Scanner widget */
     #scannerWidget {
-      background: #014235;   /* widget en #014235 */
+      background: #fafafa;
       padding: 15px;
       border: 1px solid #ddd;
       margin-bottom: 30px;
     }
-    #scannerWidget label, 
-    #scannerWidget select,
-    #scannerWidget input {
+    #scannerWidget label {
       display: block;
-      width: 100%;
-      margin-bottom: 10px;
+      margin-bottom: 5px;
+      font-weight: bold;
     }
     #status {
       margin-top: 10px;
@@ -121,7 +119,7 @@
     }
     #scanTable th {
       cursor: pointer;
-      background: #eee; /* no tocar */
+      background: #eee;
     }
     #pagination {
       margin-top: 10px;
@@ -137,9 +135,7 @@
 </head>
 <body>
   <header>
-    <div class="logo">
-      <img src="ruta/a/mi-logo.png" alt="Logo de la empresa">
-    </div>
+    <div class="logo">📦 Tracker</div>
     <h1>Scanner de rastreo</h1>
   </header>
 
@@ -231,7 +227,7 @@
   <script>
     console.log("Script cargado correctamente");
 
-    // Scanner logic
+    // Scanner logic (sin cambios)
     let mode = "recibido";
     const modeSelect = document.getElementById("modeSelect");
     modeSelect.addEventListener("change", () => {
@@ -248,10 +244,20 @@
     }
 
     function sanitizeInput(value) {
-      return value.replace(/[^0-9a-zA-Z]/g, "-");
+      const sanitized = value.replace(/[^0-9a-zA-Z]/g, "-");
+      return sanitized;
     }
 
     const barcodeInput = document.getElementById("barcodeInput");
+    barcodeInput.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        setTimeout(() => {
+          const code = sanitizeInput(this.value.trim());
+          sendBarcode(code);
+        }, 150);
+      }
+    });
     ["beforeinput","input","paste","keyup"].forEach(evt => {
       barcodeInput.addEventListener(evt, () => {
         barcodeInput.value = sanitizeInput(barcodeInput.value);
@@ -271,7 +277,6 @@
         updateStatus("Por favor, escanea un código válido.", "error");
         return;
       }
-      const prevLabel = document.querySelector("#mode").textContent.split(":")[1].trim();
       const endpoint = mode === "recibido"
         ? "/scanner/recibido"
         : `/scanner/${mode}`;
@@ -281,17 +286,16 @@
           headers:{ "Content-Type":"application/json" },
           body: JSON.stringify({ paquete_id: barcode })
         });
+        const json = await resp.json();
         if (resp.ok) {
-          updateStatus("Operación realizada correctamente.", "success");
-          const newLabel = modeSelect.options[modeSelect.selectedIndex].text;
-          addScanRecord(barcode, prevLabel, newLabel);
-          showToast(`Paquete ${barcode} actualizado`, "success");
+          updateStatus(json.message, "success");
+          addScanRecord(barcode, json.message);
+          showToast("Paquete " + barcode + " actualizado", "success");
         } else {
-          const err = (await resp.json()).error;
-          updateStatus(err, "error");
-          showToast(err, "error");
+          updateStatus(json.error, "error");
+          showToast(json.error, "error");
         }
-      } catch {
+      } catch (e) {
         updateStatus("Error al conectar con el servidor.", "error");
         showToast("Error de red", "error");
       } finally {
@@ -321,10 +325,11 @@
     let filterText = '', filterState = '';
     let currentPage = 1, pageSize = 10;
 
-    function addScanRecord(id, prevState, newState) {
+    function addScanRecord(id, newState) {
       const now = new Date().toLocaleString();
-      lastScans.unshift({ time: now, id, prevState, newState, notes: '' });
-      if (lastScans.length > 100) lastScans.pop();
+      const prev = lastScans.length ? lastScans[lastScans.length-1].newState : '—';
+      lastScans.unshift({ time: now, id, prevState: prev, newState, notes: '' });
+      if (lastScans.length>100) lastScans.pop();
       renderTable();
     }
 
@@ -349,18 +354,18 @@
     });
 
     document.getElementById("prevPage").addEventListener("click", () => {
-      if (currentPage > 1) { currentPage--; renderTable(); }
+      if (currentPage>1) { currentPage--; renderTable(); }
     });
     document.getElementById("nextPage").addEventListener("click", () => {
-      const max = Math.ceil(filteredData().length / pageSize);
-      if (currentPage < max) { currentPage++; renderTable(); }
+      const maxPage = Math.ceil(filteredData().length/pageSize);
+      if (currentPage<maxPage) { currentPage++; renderTable(); }
     });
 
     function filteredData() {
-      return lastScans.filter(r =>
-        (!filterText  || r.id.toLowerCase().includes(filterText)) &&
-        (!filterState || r.newState === filterState)
-      );
+      return lastScans.filter(r => {
+        return (!filterText || r.id.toLowerCase().includes(filterText))
+            && (!filterState || r.newState === filterState);
+      });
     }
 
     function renderTable() {
@@ -369,8 +374,8 @@
         if (a[sortCol] > b[sortCol]) return sortAsc ? 1 : -1;
         return 0;
       });
-      const start = (currentPage - 1) * pageSize;
-      const pageData = data.slice(start, start + pageSize);
+      const start = (currentPage-1)*pageSize;
+      const pageData = data.slice(start, start+pageSize);
 
       const tbody = document.querySelector("#scanTable tbody");
       tbody.innerHTML = "";
@@ -389,11 +394,11 @@
 
       document.getElementById("pageInfo").innerText =
         `Página ${currentPage} de ${Math.max(1,Math.ceil(data.length/pageSize))}`;
-      document.getElementById("prevPage").disabled = currentPage === 1;
-      document.getElementById("nextPage").disabled = currentPage >= Math.ceil(data.length/pageSize);
+      document.getElementById("prevPage").disabled = currentPage===1;
+      document.getElementById("nextPage").disabled = currentPage>=Math.ceil(data.length/pageSize);
     }
 
-    // Inicializa tabla
+    // Inicializa tabla vacía
     renderTable();
   </script>
 </body>
