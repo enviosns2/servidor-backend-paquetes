@@ -20,9 +20,9 @@
 <body>
   <h1>Escáner de Código de Barras</h1>
   <p id="mode">Modo actual: <strong>Recibido</strong></p>
-  <button onclick="toggleMode()">Cambiar Modo</button>
-  <!-- Menú desplegable oculto hasta pulsar el botón -->
-  <select id="modeSelect" style="display:none;">
+
+  <!-- Lista desplegable siempre visible -->
+  <select id="modeSelect">
     <option value="recibido">Recibido</option>
     <option value="en-transito-nacional-mx">En tránsito nacional MX</option>
     <option value="en-transito-nacional-eu">En tránsito nacional EU</option>
@@ -40,17 +40,12 @@
 
     let mode = "recibido"; // Modo inicial
 
-    function toggleMode() {
-      const sel = document.getElementById("modeSelect");
-      sel.style.display = sel.style.display === "none" ? "inline-block" : "none";
-    }
-
+    // Actualiza modo al cambiar el select
     document.getElementById("modeSelect").addEventListener("change", function() {
       mode = this.value;
       const label = this.options[this.selectedIndex].text;
       document.getElementById("mode").innerHTML = `Modo actual: <strong>${label}</strong>`;
       clearStatus();
-      this.style.display = "none";
     });
 
     function clearStatus() {
