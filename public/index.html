@@ -3,11 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Escáner de Código de Barras</title>
+  <title>Scanner de rastreo</title>
   <style>
+    /* Layout */
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: #333;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 1000;
+    }
+    header .logo {
+      font-weight: bold;
+      margin-right: 20px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    #container {
+      display: flex;
+      flex: 1;
+      padding-top: 60px; /* espacio para header */
+    }
+    aside {
+      width: 20%;
+      background: #f4f4f4;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    aside nav a {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      color: #333;
+      text-decoration: none;
+    }
+    aside nav a .icon {
+      margin-right: 8px;
+    }
+    main {
+      flex: 1;
+      padding: 20px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    /* Scanner widget */
+    #scannerWidget {
+      background: #fafafa;
+      padding: 15px;
+      border: 1px solid #ddd;
+      margin-bottom: 30px;
+    }
+    #scannerWidget label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
     #status {
       margin-top: 10px;
-      font-size: 1rem;
+      font-size: 0.95rem;
     }
     .success {
       color: green;
@@ -15,36 +82,158 @@
     .error {
       color: red;
     }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      top: 70px; right: 20px;
+      padding: 10px 15px;
+      background: #333;
+      color: #fff;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 1001;
+    }
+    #toast.show {
+      opacity: 1;
+    }
+    #toast.success { background: green; }
+    #toast.error   { background: red; }
+
+    /* Table */
+    #tableControls {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #scanTable {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #scanTable th, #scanTable td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    #scanTable th {
+      cursor: pointer;
+      background: #eee;
+    }
+    #pagination {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #pagination button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
-  <h1>Escáner de Código de Barras</h1>
-  <p id="mode">Modo actual: <strong>Recibido</strong></p>
+  <header>
+    <div class="logo">📦 Tracker</div>
+    <h1>Scanner de rastreo</h1>
+  </header>
 
-  <!-- Lista desplegable siempre visible -->
-  <select id="modeSelect">
-    <option value="recibido">Recibido</option>
-    <option value="en-transito-nacional-mx">En tránsito nacional MX</option>
-    <option value="en-transito-nacional-eu">En tránsito nacional EU</option>
-    <option value="en-transito-internacional">En tránsito internacional</option>
-    <option value="en-almacen-eu">En almacén EU</option>
-    <option value="en-almacen-mx">En almacén MX</option>
-  </select>
+  <div id="container">
+    <aside>
+      <nav>
+        <a href="#"><span class="icon">🔍</span>Escaneo</a>
+        <a href="#"><span class="icon">📜</span>Historial</a>
+        <a href="#"><span class="icon">⚠️</span>Incidencias</a>
+        <a href="#"><span class="icon">📊</span>Reportes</a>
+        <a href="#"><span class="icon">⚙️</span>Ajustes</a>
+      </nav>
+    </aside>
 
-  <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus />
+    <main>
+      <!-- Scanner Widget -->
+      <div id="scannerWidget">
+        <p id="mode">Modo actual: <strong>Recibido</strong></p>
+        <label for="modeSelect">Selecciona fase:</label>
+        <select id="modeSelect">
+          <optgroup label="Recepción">
+            <option value="recibido">Recibido</option>
+          </optgroup>
+          <optgroup label="Tránsito">
+            <option value="en-transito-nacional-mx">En tránsito nacional MX</option>
+            <option value="en-transito-nacional-eu">En tránsito nacional EU</option>
+            <option value="en-transito-internacional">En tránsito internacional</option>
+          </optgroup>
+          <optgroup label="Almacén">
+            <option value="en-almacen-eu">En almacén EU</option>
+            <option value="en-almacen-mx">En almacén MX</option>
+          </optgroup>
+        </select>
 
-  <p id="status" aria-live="polite"></p>
+        <label for="barcodeInput">Escanea o pega el código:</label>
+        <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus />
+
+        <p id="status" aria-live="polite"></p>
+      </div>
+
+      <!-- Table Controls -->
+      <div id="tableControls">
+        <input type="text" id="searchInput" placeholder="Buscar paquete…" />
+        <select id="stateFilter">
+          <option value="">Todos los estados</option>
+          <optgroup label="Recepción">
+            <option value="Recibido">Recibido</option>
+          </optgroup>
+          <optgroup label="Tránsito">
+            <option value="En tránsito nacional MX">En tránsito nacional MX</option>
+            <option value="En tránsito nacional EU">En tránsito nacional EU</option>
+            <option value="En tránsito internacional">En tránsito internacional</option>
+          </optgroup>
+          <optgroup label="Almacén">
+            <option value="En almacén EU">En almacén EU</option>
+            <option value="En almacén MX">En almacén MX</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- Últimos escaneos -->
+      <table id="scanTable">
+        <thead>
+          <tr>
+            <th data-col="time">Fecha y hora</th>
+            <th data-col="id">Paquete</th>
+            <th data-col="prev">Estado anterior</th>
+            <th data-col="new">Estado nuevo</th>
+            <th data-col="notes">Incidencias</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Filas generadas dinámicamente -->
+        </tbody>
+      </table>
+
+      <!-- Paginación -->
+      <div id="pagination">
+        <button id="prevPage">Anterior</button>
+        <span id="pageInfo">Página 1</span>
+        <button id="nextPage">Siguiente</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
 
   <script>
     console.log("Script cargado correctamente");
 
-    let mode = "recibido"; // Modo inicial
-
-    // Actualiza modo al cambiar el select
-    document.getElementById("modeSelect").addEventListener("change", function() {
-      mode = this.value;
-      const label = this.options[this.selectedIndex].text;
-      document.getElementById("mode").innerHTML = `Modo actual: <strong>${label}</strong>`;
+    // Scanner logic (sin cambios)
+    let mode = "recibido";
+    const modeSelect = document.getElementById("modeSelect");
+    modeSelect.addEventListener("change", () => {
+      mode = modeSelect.value;
+      const text = modeSelect.options[modeSelect.selectedIndex].text;
+      document.getElementById("mode").innerHTML = `Modo actual: <strong>${text}</strong>`;
       clearStatus();
     });
 
@@ -55,64 +244,62 @@
     }
 
     function sanitizeInput(value) {
-      console.log("sanitizeInput - Valor original:", value);
       const sanitized = value.replace(/[^0-9a-zA-Z]/g, "-");
-      console.log("sanitizeInput - Valor sanitizado:", sanitized);
       return sanitized;
     }
 
     const barcodeInput = document.getElementById("barcodeInput");
-
-    barcodeInput.addEventListener("beforeinput", function () {
-      this.value = sanitizeInput(this.value);
+    barcodeInput.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        setTimeout(() => {
+          const code = sanitizeInput(this.value.trim());
+          sendBarcode(code);
+        }, 150);
+      }
     });
-    barcodeInput.addEventListener("input", function () {
-      this.value = sanitizeInput(this.value);
-    });
-    barcodeInput.addEventListener("paste", function () {
-      setTimeout(() => {
-        this.value = sanitizeInput(this.value);
-      }, 50);
-    });
-    barcodeInput.addEventListener("keyup", function () {
-      this.value = sanitizeInput(this.value);
+    ["beforeinput","input","paste","keyup"].forEach(evt => {
+      barcodeInput.addEventListener(evt, () => {
+        barcodeInput.value = sanitizeInput(barcodeInput.value);
+      });
     });
     setInterval(() => {
-      let cv = barcodeInput.value;
-      let sv = sanitizeInput(cv);
-      if (cv !== sv) barcodeInput.value = sv;
+      const v = sanitizeInput(barcodeInput.value);
+      if (barcodeInput.value !== v) barcodeInput.value = v;
     }, 25);
     new MutationObserver(() => {
-      let nv = sanitizeInput(barcodeInput.value);
-      if (barcodeInput.value !== nv) barcodeInput.value = nv;
-    }).observe(barcodeInput, { childList: true, characterData: true, subtree: true });
+      const v = sanitizeInput(barcodeInput.value);
+      if (barcodeInput.value !== v) barcodeInput.value = v;
+    }).observe(barcodeInput, { childList:true,characterData:true,subtree:true });
 
     async function sendBarcode(barcode) {
       if (!barcode) {
         updateStatus("Por favor, escanea un código válido.", "error");
         return;
       }
-      const sanitizedBarcode = sanitizeInput(barcode);
       const endpoint = mode === "recibido"
-          ? "https://servidor-backend-paquetes.onrender.com/scanner/recibido"
-          : `https://servidor-backend-paquetes.onrender.com/scanner/${mode}`;
-
-      barcodeInput.disabled = true;
+        ? "/scanner/recibido"
+        : `/scanner/${mode}`;
       try {
-        const resp = await fetch(endpoint, {
-          method: mode === "recibido" ? "POST" : "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paquete_id: sanitizedBarcode })
+        const resp = await fetch(`https://servidor-backend-paquetes.onrender.com${endpoint}`, {
+          method: mode==="recibido"?"POST":"PUT",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ paquete_id: barcode })
         });
         const json = await resp.json();
-        if (resp.ok) updateStatus(json.message || "Operación realizada correctamente.", "success");
-        else       updateStatus(json.error   || "Ocurrió un error.",          "error");
+        if (resp.ok) {
+          updateStatus(json.message, "success");
+          addScanRecord(barcode, json.message);
+          showToast("Paquete " + barcode + " actualizado", "success");
+        } else {
+          updateStatus(json.error, "error");
+          showToast(json.error, "error");
+        }
       } catch (e) {
-        console.error("Error al enviar los datos:", e);
         updateStatus("Error al conectar con el servidor.", "error");
+        showToast("Error de red", "error");
       } finally {
         barcodeInput.value = "";
-        barcodeInput.disabled = false;
         barcodeInput.focus();
       }
     }
@@ -124,15 +311,95 @@
       setTimeout(clearStatus, 5000);
     }
 
-    barcodeInput.addEventListener("keydown", function (evt) {
-      if (evt.key === "Enter") {
-        evt.preventDefault();
-        setTimeout(() => {
-          const code = sanitizeInput(this.value.trim());
-          sendBarcode(code);
-        }, 150);
-      }
+    // Toast
+    function showToast(msg, type) {
+      const t = document.getElementById("toast");
+      t.innerText = msg;
+      t.className = `show ${type}`;
+      setTimeout(() => t.className = "", 3000);
+    }
+
+    // Tabla de últimos escaneos
+    const lastScans = [];
+    let sortCol = 'time', sortAsc = false;
+    let filterText = '', filterState = '';
+    let currentPage = 1, pageSize = 10;
+
+    function addScanRecord(id, newState) {
+      const now = new Date().toLocaleString();
+      const prev = lastScans.length ? lastScans[lastScans.length-1].newState : '—';
+      lastScans.unshift({ time: now, id, prevState: prev, newState, notes: '' });
+      if (lastScans.length>100) lastScans.pop();
+      renderTable();
+    }
+
+    document.getElementById("searchInput").addEventListener("input", e => {
+      filterText = e.target.value.toLowerCase();
+      currentPage = 1;
+      renderTable();
     });
+    document.getElementById("stateFilter").addEventListener("change", e => {
+      filterState = e.target.value;
+      currentPage = 1;
+      renderTable();
+    });
+
+    document.querySelectorAll("#scanTable th").forEach(th => {
+      th.addEventListener("click", () => {
+        const col = th.dataset.col;
+        if (sortCol === col) sortAsc = !sortAsc;
+        else { sortCol = col; sortAsc = true; }
+        renderTable();
+      });
+    });
+
+    document.getElementById("prevPage").addEventListener("click", () => {
+      if (currentPage>1) { currentPage--; renderTable(); }
+    });
+    document.getElementById("nextPage").addEventListener("click", () => {
+      const maxPage = Math.ceil(filteredData().length/pageSize);
+      if (currentPage<maxPage) { currentPage++; renderTable(); }
+    });
+
+    function filteredData() {
+      return lastScans.filter(r => {
+        return (!filterText || r.id.toLowerCase().includes(filterText))
+            && (!filterState || r.newState === filterState);
+      });
+    }
+
+    function renderTable() {
+      const data = filteredData().sort((a,b) => {
+        if (a[sortCol] < b[sortCol]) return sortAsc ? -1 : 1;
+        if (a[sortCol] > b[sortCol]) return sortAsc ? 1 : -1;
+        return 0;
+      });
+      const start = (currentPage-1)*pageSize;
+      const pageData = data.slice(start, start+pageSize);
+
+      const tbody = document.querySelector("#scanTable tbody");
+      tbody.innerHTML = "";
+      pageData.forEach(r => {
+        const tr = document.createElement("tr");
+        ['time','id','prevState','newState','notes'].forEach(key => {
+          const td = document.createElement("td");
+          td.innerText = r[key];
+          tr.appendChild(td);
+        });
+        tr.addEventListener("click", () => {
+          alert(`Detalle:\n${JSON.stringify(r,null,2)}`);
+        });
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("pageInfo").innerText =
+        `Página ${currentPage} de ${Math.max(1,Math.ceil(data.length/pageSize))}`;
+      document.getElementById("prevPage").disabled = currentPage===1;
+      document.getElementById("nextPage").disabled = currentPage>=Math.ceil(data.length/pageSize);
+    }
+
+    // Inicializa tabla vacía
+    renderTable();
   </script>
 </body>
 </html>

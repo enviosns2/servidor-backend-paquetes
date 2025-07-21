@@ -39,7 +39,7 @@ router.post("/recibido", async (req, res) => {
     }
 });
 
-// Escáner para marcar como "En tránsito nacional MX"
+// Escáner para marcar como "En tránsito nacional MX"
 router.put("/en-transito-nacional-mx", async (req, res) => {
     const { paquete_id } = req.body;
 
@@ -52,9 +52,6 @@ router.put("/en-transito-nacional-mx", async (req, res) => {
         const paqueteExistente = await collection.findOne({ paquete_id });
         if (!paqueteExistente) {
             return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-        }
-        if (paqueteExistente.estado_actual !== "Recibido") {
-            return res.status(400).json({ error: "El paquete debe estar en 'Recibido' para pasar a 'En tránsito nacional MX'." });
         }
 
         const fechaActual = new Date().toISOString();
@@ -74,14 +71,14 @@ router.put("/en-transito-nacional-mx", async (req, res) => {
         if (resultado.modifiedCount === 0) {
             return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
         }
-        res.json({ message: "Paquete marcado como 'En tránsito nacional MX' correctamente." });
+        res.json({ message: "Paquete marcado como 'En tránsito nacional MX' correctamente." });
     } catch (error) {
         console.error("Error en el servidor:", error.message);
         res.status(500).json({ error: "Error interno del servidor." });
     }
 });
 
-// Escáner para marcar como "En tránsito nacional EU"
+// Escáner para marcar como "En tránsito nacional EU"
 router.put("/en-transito-nacional-eu", async (req, res) => {
     const { paquete_id } = req.body;
 
@@ -94,9 +91,6 @@ router.put("/en-transito-nacional-eu", async (req, res) => {
         const paqueteExistente = await collection.findOne({ paquete_id });
         if (!paqueteExistente) {
             return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-        }
-        if (paqueteExistente.estado_actual !== "En tránsito nacional MX") {
-            return res.status(400).json({ error: "El paquete debe estar en 'En tránsito nacional MX' para pasar a 'En tránsito nacional EU'." });
         }
 
         const fechaActual = new Date().toISOString();
@@ -116,7 +110,7 @@ router.put("/en-transito-nacional-eu", async (req, res) => {
         if (resultado.modifiedCount === 0) {
             return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
         }
-        res.json({ message: "Paquete marcado como 'En tránsito nacional EU' correctamente." });
+        res.json({ message: "Paquete marcado como 'En tránsito nacional EU' correctamente." });
     } catch (error) {
         console.error("Error en el servidor:", error.message);
         res.status(500).json({ error: "Error interno del servidor." });
@@ -136,9 +130,6 @@ router.put("/en-transito-internacional", async (req, res) => {
         const paqueteExistente = await collection.findOne({ paquete_id });
         if (!paqueteExistente) {
             return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-        }
-        if (paqueteExistente.estado_actual !== "En tránsito nacional EU") {
-            return res.status(400).json({ error: "El paquete debe estar en 'En tránsito nacional EU' para pasar a 'En tránsito internacional'." });
         }
 
         const fechaActual = new Date().toISOString();
@@ -179,9 +170,6 @@ router.put("/en-almacen-eu", async (req, res) => {
         if (!paqueteExistente) {
             return res.status(404).json({ error: "El paquete no existe en la base de datos." });
         }
-        if (paqueteExistente.estado_actual !== "En tránsito internacional") {
-            return res.status(400).json({ error: "El paquete debe estar en 'En tránsito internacional' para pasar a 'En almacén EU'." });
-        }
 
         const fechaActual = new Date().toISOString();
         const resultado = await collection.updateOne(
@@ -220,9 +208,6 @@ router.put("/en-almacen-mx", async (req, res) => {
         const paqueteExistente = await collection.findOne({ paquete_id });
         if (!paqueteExistente) {
             return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-        }
-        if (paqueteExistente.estado_actual !== "En almacén EU") {
-            return res.status(400).json({ error: "El paquete debe estar en 'En almacén EU' para pasar a 'En almacén MX'." });
         }
 
         const fechaActual = new Date().toISOString();
