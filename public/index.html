@@ -24,8 +24,8 @@
       padding: 0 20px;
       z-index: 1000;
     }
-    header .logo {
-      font-weight: bold;
+    header .logo img {
+      height: 40px;
       margin-right: 20px;
     }
     header h1 {
@@ -39,7 +39,7 @@
     }
     aside {
       width: 20%;
-      background: #f4f4f4;
+      background: #f4f4f4;   /* vuelto al color original */
       padding: 20px;
       box-sizing: border-box;
     }
@@ -62,26 +62,24 @@
 
     /* Scanner widget */
     #scannerWidget {
-      background: #fafafa;
+      background: #fafafa;    /* vuelto al color original */
       padding: 15px;
       border: 1px solid #ddd;
       margin-bottom: 30px;
     }
-    #scannerWidget label {
+    #scannerWidget label,
+    #scannerWidget select,
+    #scannerWidget input {
       display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
+      width: 100%;
+      margin-bottom: 10px;
     }
     #status {
       margin-top: 10px;
       font-size: 0.95rem;
     }
-    .success {
-      color: green;
-    }
-    .error {
-      color: red;
-    }
+    .success { color: green; }
+    .error   { color: red; }
 
     /* Toast */
     #toast {
@@ -95,9 +93,7 @@
       transition: opacity 0.3s;
       z-index: 1001;
     }
-    #toast.show {
-      opacity: 1;
-    }
+    #toast.show { opacity: 1; }
     #toast.success { background: green; }
     #toast.error   { background: red; }
 
@@ -119,7 +115,7 @@
     }
     #scanTable th {
       cursor: pointer;
-      background: #eee;
+      background: #eee;  /* se mantiene */
     }
     #pagination {
       margin-top: 10px;
@@ -135,7 +131,10 @@
 </head>
 <body>
   <header>
-    <div class="logo">📦 Tracker</div>
+    <div class="logo">
+      <!-- Logo empresarial fijo -->
+      <img src="ruta/a/mi-logo-empresarial.png" alt="Logo Empresa">
+    </div>
     <h1>Scanner de rastreo</h1>
   </header>
 
@@ -196,7 +195,7 @@
         </select>
       </div>
 
-      <!-- Últimos escaneos -->
+      <!-- Últimos escaneos / Historial completo -->
       <table id="scanTable">
         <thead>
           <tr>
@@ -208,7 +207,7 @@
           </tr>
         </thead>
         <tbody>
-          <!-- Filas generadas dinámicamente -->
+          <!-- Filas se inyectan desde la variable tableData -->
         </tbody>
       </table>
 
@@ -227,37 +226,53 @@
   <script>
     console.log("Script cargado correctamente");
 
-    // Scanner logic (sin cambios)
+    // --- Variables y carga inicial ---
     let mode = "recibido";
-    const modeSelect = document.getElementById("modeSelect");
-    modeSelect.addEventListener("change", () => {
-      mode = modeSelect.value;
-      const text = modeSelect.options[modeSelect.selectedIndex].text;
+    let tableData = [];       // contendrá TODO el historial de la BD
+    let sortCol = 'time', sortAsc = false;
+    let filterText = '', filterState = '';
+    let currentPage = 1, pageSize = 10;
+
+    // Carga TODO el historial de paquetes de la base de datos
+    async function loadAllPackages() {
+      try {
+        const resp = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/all");
+        const paquetes = await resp.json();  // asume [{ paquete_id, estado_actual, historial:[{estado,fecha},...], ...}, ...]
+        tableData = paquetes.map(p => {
+          const h = p.historial;
+          return {
+            time: h[h.length-1].fecha,
+            id: p.paquete_id,
+            prev: h.length>1 ? h[h.length-2].estado : "",
+            new: p.estado_actual,
+            notes: ""
+          };
+        });
+        renderTable();
+      } catch (e) {
+        console.error("No se pudo cargar historial:", e);
+      }
+    }
+
+    // --- Scanner logic sin cambios ---
+    document.getElementById("modeSelect").addEventListener("change", function() {
+      mode = this.value;
+      const text = this.options[this.selectedIndex].text;
       document.getElementById("mode").innerHTML = `Modo actual: <strong>${text}</strong>`;
       clearStatus();
     });
 
     function clearStatus() {
-      const status = document.getElementById("status");
-      status.innerText = "";
-      status.className = "";
+      const s = document.getElementById("status");
+      s.innerText = "";
+      s.className = "";
     }
 
-    function sanitizeInput(value) {
-      const sanitized = value.replace(/[^0-9a-zA-Z]/g, "-");
-      return sanitized;
+    function sanitizeInput(v) {
+      return v.replace(/[^0-9a-zA-Z]/g, "-");
     }
 
     const barcodeInput = document.getElementById("barcodeInput");
-    barcodeInput.addEventListener("keydown", function(event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        setTimeout(() => {
-          const code = sanitizeInput(this.value.trim());
-          sendBarcode(code);
-        }, 150);
-      }
-    });
     ["beforeinput","input","paste","keyup"].forEach(evt => {
       barcodeInput.addEventListener(evt, () => {
         barcodeInput.value = sanitizeInput(barcodeInput.value);
@@ -272,37 +287,40 @@
       if (barcodeInput.value !== v) barcodeInput.value = v;
     }).observe(barcodeInput, { childList:true,characterData:true,subtree:true });
 
-    async function sendBarcode(barcode) {
-      if (!barcode) {
-        updateStatus("Por favor, escanea un código válido.", "error");
-        return;
+    barcodeInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setTimeout(async () => {
+          const code = sanitizeInput(this.value.trim());
+          if (!code) return updateStatus("Por favor, escanea un código válido.", "error");
+          const endpoint = mode==="recibido"
+            ? "/scanner/recibido" 
+            : `/scanner/${mode}`;
+          try {
+            const r = await fetch("https://servidor-backend-paquetes.onrender.com"+endpoint, {
+              method: mode==="recibido"?"POST":"PUT",
+              headers:{ "Content-Type":"application/json" },
+              body: JSON.stringify({ paquete_id: code })
+            });
+            if (r.ok) {
+              updateStatus("Operación correcta", "success");
+              showToast(`Paquete ${code} actualizado`, "success");
+              // recarga historial para reflejar cambios
+              await loadAllPackages();
+            } else {
+              const err = (await r.json()).error;
+              updateStatus(err, "error");
+              showToast(err, "error");
+            }
+          } catch {
+            updateStatus("Error de red.", "error");
+            showToast("Error de red", "error");
+          } finally {
+            barcodeInput.value = "";
+          }
+        }, 150);
       }
-      const endpoint = mode === "recibido"
-        ? "/scanner/recibido"
-        : `/scanner/${mode}`;
-      try {
-        const resp = await fetch(`https://servidor-backend-paquetes.onrender.com${endpoint}`, {
-          method: mode==="recibido"?"POST":"PUT",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ paquete_id: barcode })
-        });
-        const json = await resp.json();
-        if (resp.ok) {
-          updateStatus(json.message, "success");
-          addScanRecord(barcode, json.message);
-          showToast("Paquete " + barcode + " actualizado", "success");
-        } else {
-          updateStatus(json.error, "error");
-          showToast(json.error, "error");
-        }
-      } catch (e) {
-        updateStatus("Error al conectar con el servidor.", "error");
-        showToast("Error de red", "error");
-      } finally {
-        barcodeInput.value = "";
-        barcodeInput.focus();
-      }
-    }
+    });
 
     function updateStatus(msg, cls) {
       const s = document.getElementById("status");
@@ -311,7 +329,6 @@
       setTimeout(clearStatus, 5000);
     }
 
-    // Toast
     function showToast(msg, type) {
       const t = document.getElementById("toast");
       t.innerText = msg;
@@ -319,20 +336,7 @@
       setTimeout(() => t.className = "", 3000);
     }
 
-    // Tabla de últimos escaneos
-    const lastScans = [];
-    let sortCol = 'time', sortAsc = false;
-    let filterText = '', filterState = '';
-    let currentPage = 1, pageSize = 10;
-
-    function addScanRecord(id, newState) {
-      const now = new Date().toLocaleString();
-      const prev = lastScans.length ? lastScans[lastScans.length-1].newState : '—';
-      lastScans.unshift({ time: now, id, prevState: prev, newState, notes: '' });
-      if (lastScans.length>100) lastScans.pop();
-      renderTable();
-    }
-
+    // --- Filtros y tabla ---
     document.getElementById("searchInput").addEventListener("input", e => {
       filterText = e.target.value.toLowerCase();
       currentPage = 1;
@@ -343,45 +347,43 @@
       currentPage = 1;
       renderTable();
     });
-
     document.querySelectorAll("#scanTable th").forEach(th => {
       th.addEventListener("click", () => {
         const col = th.dataset.col;
-        if (sortCol === col) sortAsc = !sortAsc;
-        else { sortCol = col; sortAsc = true; }
+        sortAsc = (sortCol === col) ? !sortAsc : true;
+        sortCol = col;
         renderTable();
       });
     });
-
     document.getElementById("prevPage").addEventListener("click", () => {
       if (currentPage>1) { currentPage--; renderTable(); }
     });
     document.getElementById("nextPage").addEventListener("click", () => {
-      const maxPage = Math.ceil(filteredData().length/pageSize);
-      if (currentPage<maxPage) { currentPage++; renderTable(); }
+      const maxp = Math.ceil(filteredData().length/pageSize);
+      if (currentPage<maxp) { currentPage++; renderTable(); }
     });
 
     function filteredData() {
-      return lastScans.filter(r => {
-        return (!filterText || r.id.toLowerCase().includes(filterText))
-            && (!filterState || r.newState === filterState);
+      return tableData.filter(r => {
+        return (!filterText  || r.id.toLowerCase().includes(filterText))
+            && (!filterState || r.new === filterState);
       });
     }
 
     function renderTable() {
-      const data = filteredData().sort((a,b) => {
+      let data = filteredData().sort((a,b) => {
         if (a[sortCol] < b[sortCol]) return sortAsc ? -1 : 1;
         if (a[sortCol] > b[sortCol]) return sortAsc ? 1 : -1;
         return 0;
       });
       const start = (currentPage-1)*pageSize;
-      const pageData = data.slice(start, start+pageSize);
+      const page = data.slice(start, start+pageSize);
 
       const tbody = document.querySelector("#scanTable tbody");
       tbody.innerHTML = "";
-      pageData.forEach(r => {
+      page.forEach(r => {
         const tr = document.createElement("tr");
-        ['time','id','prevState','newState','notes'].forEach(key => {
+        ['time','id','prev','new','notes'].forEach(key => {
           const td = document.createElement("td");
           td.innerText = r[key];
           tr.appendChild(td);
@@ -391,15 +393,14 @@
         });
         tbody.appendChild(tr);
       });
-
       document.getElementById("pageInfo").innerText =
         `Página ${currentPage} de ${Math.max(1,Math.ceil(data.length/pageSize))}`;
       document.getElementById("prevPage").disabled = currentPage===1;
       document.getElementById("nextPage").disabled = currentPage>=Math.ceil(data.length/pageSize);
     }
 
-    // Inicializa tabla vacía
-    renderTable();
+    // Al iniciar, cargamos TODOS los paquetes
+    loadAllPackages();
   </script>
 </body>
 </html>
