@@ -234,4 +234,16 @@ router.put("/en-almacen-mx", async (req, res) => {
     }
 });
 
+// Ruta para devolver todos los paquetes (historial completo)
+router.get("/all", async (req, res) => {
+  try {
+    const collection = global.db.collection("estados");
+    const paquetes = await collection.find({}).toArray();
+    res.json(paquetes);
+  } catch (error) {
+    console.error("Error al obtener todos los paquetes:", error);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
+});
+
 module.exports = router;
