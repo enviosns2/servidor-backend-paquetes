@@ -155,3 +155,7 @@ $RECYCLE.BIN/
 # Linux temporary files
 *.swp
 *.swo
+# no versionar dependencias
+node_modules/
+# no versionar locks que npm puso dentro de node_modules
+node_modules/**/*.lock
