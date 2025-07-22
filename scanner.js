@@ -1,205 +1,215 @@
 const express = require("express");
 const router = express.Router();
-const multer = require("multer");
-const path = require("path");
 
-// --- Configuración de Multer para manejar adjuntos ---
+const fs = require("fs");
+const path = require("path");
+const multer = require("multer");
+const { ObjectId } = require("mongodb");
+
+// --- Asegurar carpeta de uploads ---
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+// --- Configuración de Multer para adjuntos ---
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Guarda en carpeta uploads junto a este archivo
-    cb(null, path.join(__dirname, "uploads"));
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const ext  = path.extname(file.originalname);
     const name = path.basename(file.originalname, ext);
     cb(null, `${name}-${Date.now()}${ext}`);
   }
 });
 const upload = multer({ storage });
 
-// --- Rutas existentes de paquetes ---
+// ----------------------------------------
+// RUTAS DE PAQUETES (sin cambios en tu lógica)
+// ----------------------------------------
 
 // Escáner para crear un nuevo paquete con estado "Recibido"
 router.post("/recibido", async (req, res) => {
-    const { paquete_id } = req.body;
-    if (!paquete_id || typeof paquete_id !== "string") {
-        return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const collection = global.db.collection("estados");
+    const paqueteExistente = await collection.findOne({ paquete_id });
+    if (paqueteExistente) {
+      return res.status(400).json({ error: "El paquete ya existe con estado inicial." });
     }
-    try {
-        const collection = global.db.collection("estados");
-        const paqueteExistente = await collection.findOne({ paquete_id });
-        if (paqueteExistente) {
-            return res.status(400).json({ error: "El paquete ya existe con estado inicial." });
-        }
-        const fechaActual = new Date().toISOString();
-        const nuevoPaquete = {
-            paquete_id,
-            estado_actual: "Recibido",
-            historial: [{ estado: "Recibido", fecha: fechaActual }],
-        };
-        const resultado = await collection.insertOne(nuevoPaquete);
-        res.status(201).json({ message: "Paquete creado exitosamente.", id: resultado.insertedId });
-    } catch (error) {
-        console.error("Error al crear paquete:", error.message);
-        res.status(500).json({ error: "Error interno del servidor." });
-    }
+    const fechaActual = new Date().toISOString();
+    const nuevoPaquete = {
+      paquete_id,
+      estado_actual: "Recibido",
+      historial: [{ estado: "Recibido", fecha: fechaActual }],
+    };
+    const resultado = await collection.insertOne(nuevoPaquete);
+    res.status(201).json({ message: "Paquete creado exitosamente.", id: resultado.insertedId });
+  } catch (error) {
+    console.error("Error al crear paquete:", error.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
 });
 
 // Escáner para marcar como "En tránsito nacional MX"
 router.put("/en-transito-nacional-mx", async (req, res) => {
-    const { paquete_id } = req.body;
-    if (!paquete_id || typeof paquete_id !== "string") {
-        return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const collection = global.db.collection("estados");
+    const paqueteExistente = await collection.findOne({ paquete_id });
+    if (!paqueteExistente) {
+      return res.status(404).json({ error: "El paquete no existe en la base de datos." });
     }
-    try {
-        const collection = global.db.collection("estados");
-        const paqueteExistente = await collection.findOne({ paquete_id });
-        if (!paqueteExistente) {
-            return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-        }
-        const fechaActual = new Date().toISOString();
-        const resultado = await collection.updateOne(
-            { paquete_id },
-            {
-                $set: { estado_actual: "En tránsito nacional MX" },
-                $push: { historial: { estado: "En tránsito nacional MX", fecha: fechaActual } }
-            }
-        );
-        if (resultado.modifiedCount === 0) {
-            return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
-        }
-        res.json({ message: "Paquete marcado como 'En tránsito nacional MX' correctamente." });
-    } catch (error) {
-        console.error("Error en el servidor:", error.message);
-        res.status(500).json({ error: "Error interno del servidor." });
+    const fechaActual = new Date().toISOString();
+    const resultado = await collection.updateOne(
+      { paquete_id },
+      {
+        $set: { estado_actual: "En tránsito nacional MX" },
+        $push: { historial: { estado: "En tránsito nacional MX", fecha: fechaActual } }
+      }
+    );
+    if (resultado.modifiedCount === 0) {
+      return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
     }
+    res.json({ message: "Paquete marcado como 'En tránsito nacional MX' correctamente." });
+  } catch (error) {
+    console.error("Error en el servidor:", error.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
 });
 
 // Escáner para marcar como "En tránsito nacional EU"
 router.put("/en-transito-nacional-eu", async (req, res) => {
-    const { paquete_id } = req.body;
-    if (!paquete_id || typeof paquete_id !== "string") {
-        return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const collection = global.db.collection("estados");
+    const paqueteExistente = await collection.findOne({ paquete_id });
+    if (!paqueteExistente) {
+      return res.status(404).json({ error: "El paquete no existe en la base de datos." });
     }
-    try {
-        const collection = global.db.collection("estados");
-        const paqueteExistente = await collection.findOne({ paquete_id });
-        if (!paqueteExistente) {
-            return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-        }
-        const fechaActual = new Date().toISOString();
-        const resultado = await collection.updateOne(
-            { paquete_id },
-            {
-                $set: { estado_actual: "En tránsito nacional EU" },
-                $push: { historial: { estado: "En tránsito nacional EU", fecha: fechaActual } }
-            }
-        );
-        if (resultado.modifiedCount === 0) {
-            return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
-        }
-        res.json({ message: "Paquete marcado como 'En tránsito nacional EU' correctamente." });
-    } catch (error) {
-        console.error("Error en el servidor:", error.message);
-        res.status(500).json({ error: "Error interno del servidor." });
+    const fechaActual = new Date().toISOString();
+    const resultado = await collection.updateOne(
+      { paquete_id },
+      {
+        $set: { estado_actual: "En tránsito nacional EU" },
+        $push: { historial: { estado: "En tránsito nacional EU", fecha: fechaActual } }
+      }
+    );
+    if (resultado.modifiedCount === 0) {
+      return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
     }
+    res.json({ message: "Paquete marcado como 'En tránsito nacional EU' correctamente." });
+  } catch (error) {
+    console.error("Error en el servidor:", error.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
 });
 
 // Escáner para marcar como "En tránsito internacional"
 router.put("/en-transito-internacional", async (req, res) => {
-    const { paquete_id } = req.body;
-    if (!paquete_id || typeof paquete_id !== "string") {
-        return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const collection = global.db.collection("estados");
+    const paqueteExistente = await collection.findOne({ paquete_id });
+    if (!paqueteExistente) {
+      return res.status(404).json({ error: "El paquete no existe en la base de datos." });
     }
-    try {
-        const collection = global.db.collection("estados");
-        const paqueteExistente = await collection.findOne({ paquete_id });
-        if (!paqueteExistente) {
-            return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-        }
-        const fechaActual = new Date().toISOString();
-        const resultado = await collection.updateOne(
-            { paquete_id },
-            {
-                $set: { estado_actual: "En tránsito internacional" },
-                $push: { historial: { estado: "En tránsito internacional", fecha: fechaActual } }
-            }
-        );
-        if (resultado.modifiedCount === 0) {
-            return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
-        }
-        res.json({ message: "Paquete marcado como 'En tránsito internacional' correctamente." });
-    } catch (error) {
-        console.error("Error en el servidor:", error.message);
-        res.status(500).json({ error: "Error interno del servidor." });
+    const fechaActual = new Date().toISOString();
+    const resultado = await collection.updateOne(
+      { paquete_id },
+      {
+        $set: { estado_actual: "En tránsito internacional" },
+        $push: { historial: { estado: "En tránsito internacional", fecha: fechaActual } }
+      }
+    );
+    if (resultado.modifiedCount === 0) {
+      return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
     }
+    res.json({ message: "Paquete marcado como 'En tránsito internacional' correctamente." });
+  } catch (error) {
+    console.error("Error en el servidor:", error.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
 });
 
 // Escáner para marcar como "En almacén EU"
 router.put("/en-almacen-eu", async (req, res) => {
-    const { paquete_id } = req.body;
-    if (!paquete_id || typeof paquete_id !== "string") {
-        return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const collection = global.db.collection("estados");
+    const paqueteExistente = await collection.findOne({ paquete_id });
+    if (!paqueteExistente) {
+      return res.status(404).json({ error: "El paquete no existe en la base de datos." });
     }
-    try {
-        const collection = global.db.collection("estados");
-        const paqueteExistente = await collection.findOne({ paquete_id });
-        if (!paqueteExistente) {
-            return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-        }
-        const fechaActual = new Date().toISOString();
-        const resultado = await collection.updateOne(
-            { paquete_id },
-            {
-                $set: { estado_actual: "En almacén EU" },
-                $push: { historial: { estado: "En almacén EU", fecha: fechaActual } }
-            }
-        );
-        if (resultado.modifiedCount === 0) {
-            return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
-        }
-        res.json({ message: "Paquete marcado como 'En almacén EU' correctamente." });
-    } catch (error) {
-        console.error("Error en el servidor:", error.message);
-        res.status(500).json({ error: "Error interno del servidor." });
+    const fechaActual = new Date().toISOString();
+    const resultado = await collection.updateOne(
+      { paquete_id },
+      {
+        $set: { estado_actual: "En almacén EU" },
+        $push: { historial: { estado: "En almacén EU", fecha: fechaActual } }
+      }
+    );
+    if (resultado.modifiedCount === 0) {
+      return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
     }
+    res.json({ message: "Paquete marcado como 'En almacén EU' correctamente." });
+  } catch (error) {
+    console.error("Error en el servidor:", error.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
 });
 
 // Escáner para marcar como "En almacén MX"
 router.put("/en-almacen-mx", async (req, res) => {
-    const { paquete_id } = req.body;
-    if (!paquete_id || typeof paquete_id !== "string") {
-        return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const collection = global.db.collection("estados");
+    const paqueteExistente = await collection.findOne({ paquete_id });
+    if (!paqueteExistente) {
+      return res.status(404).json({ error: "El paquete no existe en la base de datos." });
     }
-    try {
-        const collection = global.db.collection("estados");
-        const paqueteExistente = await collection.findOne({ paquete_id });
-        if (!paqueteExistente) {
-            return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-        }
-        const fechaActual = new Date().toISOString();
-        const resultado = await collection.updateOne(
-            { paquete_id },
-            {
-                $set: { estado_actual: "En almacén MX" },
-                $push: { historial: { estado: "En almacén MX", fecha: fechaActual } }
-            }
-        );
-        if (resultado.modifiedCount === 0) {
-            return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
-        }
-        res.json({ message: "Paquete marcado como 'En almacén MX' correctamente." });
-    } catch (error) {
-        console.error("Error en el servidor:", error.message);
-        res.status(500).json({ error: "Error interno del servidor." });
+    const fechaActual = new Date().toISOString();
+    const resultado = await collection.updateOne(
+      { paquete_id },
+      {
+        $set: { estado_actual: "En almacén MX" },
+        $push: { historial: { estado: "En almacén MX", fecha: fechaActual } }
+      }
+    );
+    if (resultado.modifiedCount === 0) {
+      return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
     }
+    res.json({ message: "Paquete marcado como 'En almacén MX' correctamente." });
+  } catch (error) {
+    console.error("Error en el servidor:", error.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
 });
 
 // Ruta para devolver todos los paquetes (historial completo)
 router.get("/all", async (req, res) => {
   try {
     const collection = global.db.collection("estados");
-    const paquetes = await collection.find({}).toArray();
+    const paquetes   = await collection.find({}).toArray();
     res.json(paquetes);
   } catch (error) {
     console.error("Error al obtener todos los paquetes:", error);
@@ -207,7 +217,9 @@ router.get("/all", async (req, res) => {
   }
 });
 
-// --- Nuevas rutas de Incidencias ---
+// ----------------------------------------
+// RUTAS DE INCIDENCIAS
+// ----------------------------------------
 
 // Crear nueva incidencia (con adjuntos)
 router.post(
@@ -242,8 +254,8 @@ router.post(
 // Listar todas las incidencias
 router.get("/incidencias", async (req, res) => {
   try {
-    const collection = global.db.collection("Incidencias");
-    const incidencias = await collection.find({}).toArray();
+    const collection   = global.db.collection("Incidencias");
+    const incidencias  = await collection.find({}).toArray();
     res.json(incidencias);
   } catch (err) {
     console.error("Error al obtener incidencias:", err);
@@ -255,7 +267,7 @@ router.get("/incidencias", async (req, res) => {
 router.get("/incidencias/:id", async (req, res) => {
   try {
     const collection = global.db.collection("Incidencias");
-    const incidencia = await collection.findOne({ _id: global.ObjectId(req.params.id) });
+    const incidencia = await collection.findOne({ _id: ObjectId(req.params.id) });
     if (!incidencia) {
       return res.status(404).json({ error: "Incidencia no encontrada." });
     }
@@ -274,9 +286,9 @@ router.put("/incidencias/:id", async (req, res) => {
   }
   try {
     const collection = global.db.collection("Incidencias");
-    const updates = {};
-    const pushOps = [];
-    const fecha = new Date().toISOString();
+    const updates    = {};
+    const pushOps    = [];
+    const fecha      = new Date().toISOString();
     if (nuevo_estado) {
       updates.estado = nuevo_estado;
       pushOps.push({ estado: nuevo_estado, fecha });
@@ -285,7 +297,7 @@ router.put("/incidencias/:id", async (req, res) => {
       pushOps.push({ comentario, fecha });
     }
     await collection.updateOne(
-      { _id: global.ObjectId(req.params.id) },
+      { _id: ObjectId(req.params.id) },
       {
         $set: updates,
         $push: { historial: { $each: pushOps } }
