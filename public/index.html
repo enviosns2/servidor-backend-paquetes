@@ -39,7 +39,7 @@
     }
     aside {
       width: 20%;
-      background: #f4f4f4;   /* vuelto al color original */
+      background: #f4f4f4;
       padding: 20px;
       box-sizing: border-box;
     }
@@ -62,7 +62,7 @@
 
     /* Scanner widget */
     #scannerWidget {
-      background: #fafafa;    /* vuelto al color original */
+      background: #fafafa;
       padding: 15px;
       border: 1px solid #ddd;
       margin-bottom: 30px;
@@ -104,6 +104,10 @@
       align-items: center;
       gap: 10px;
     }
+    #counter {
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
     #scanTable {
       width: 100%;
       border-collapse: collapse;
@@ -115,7 +119,7 @@
     }
     #scanTable th {
       cursor: pointer;
-      background: #eee;  /* se mantiene */
+      background: #eee;
     }
     #pagination {
       margin-top: 10px;
@@ -127,14 +131,54 @@
       opacity: 0.5;
       cursor: default;
     }
+
+    /* Modal de incidencia */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1002;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 4px;
+      width: 400px;
+      max-width: 90%;
+    }
+    .modal-content h2 {
+      margin-top: 0;
+    }
+    .modal-content label {
+      margin: 10px 0 4px;
+      display: block;
+    }
+    .modal-content input[type="text"],
+    .modal-content select,
+    .modal-content textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .modal-content textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .modal-content .buttons {
+      margin-top: 15px;
+      text-align: right;
+      gap: 10px;
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="logo">
-   <!-- como scanner.html y LOGO.png están en la misma carpeta public -->
-   <img src="./LOGO.png" alt="Logo Empresa">
- </div>
+      <img src="./LOGO.png" alt="Logo Empresa">
+    </div>
     <h1>Scanner de rastreo</h1>
   </header>
 
@@ -175,7 +219,8 @@
         <p id="status" aria-live="polite"></p>
       </div>
 
-      <!-- Table Controls -->
+      <!-- Contador y controles de tabla -->
+      <div id="counter">Mostrando 0 de 0 paquetes</div>
       <div id="tableControls">
         <input type="text" id="searchInput" placeholder="Buscar paquete…" />
         <select id="stateFilter">
@@ -195,7 +240,7 @@
         </select>
       </div>
 
-      <!-- Últimos escaneos / Historial completo -->
+      <!-- Tabla de historial / paquetes -->
       <table id="scanTable">
         <thead>
           <tr>
@@ -204,10 +249,11 @@
             <th data-col="prev">Estado anterior</th>
             <th data-col="new">Estado nuevo</th>
             <th data-col="notes">Incidencias</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          <!-- Filas se inyectan desde la variable tableData -->
+          <!-- Filas generadas dinámicamente -->
         </tbody>
       </table>
 
@@ -220,7 +266,36 @@
     </main>
   </div>
 
-  <!-- Toast -->
+  <!-- Modal de nuevo/incidencia -->
+  <div id="incidenceModal" class="modal">
+    <div class="modal-content">
+      <h2>Reportar incidencia</h2>
+      <label for="incPaquete">Paquete</label>
+      <input type="text" id="incPaquete" readonly />
+
+      <label for="incTipo">Tipo de incidencia</label>
+      <select id="incTipo">
+        <option value="">-- Seleccione --</option>
+        <option value="Dañado">Dañado</option>
+        <option value="Falta docs">Falta docs</option>
+        <option value="Dirección incorrecta">Dirección incorrecta</option>
+        <option value="Cliente ausente">Cliente ausente</option>
+        <option value="Otro">Otro</option>
+      </select>
+
+      <label for="incDesc">Descripción</label>
+      <textarea id="incDesc"></textarea>
+
+      <label for="incAdjuntos">Adjuntar fotos/documentos</label>
+      <input type="file" id="incAdjuntos" multiple />
+
+      <div class="buttons">
+        <button id="incCancel">Cancelar</button>
+        <button id="incSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <script>
@@ -228,16 +303,34 @@
 
     // --- Variables y carga inicial ---
     let mode = "recibido";
-    let tableData = [];       // contendrá TODO el historial de la BD
+    let tableData = [];
     let sortCol = 'time', sortAsc = false;
     let filterText = '', filterState = '';
     let currentPage = 1, pageSize = 10;
 
-    // Carga TODO el historial de paquetes de la base de datos
+    const counterEl       = document.getElementById("counter");
+    const tableBody       = document.querySelector("#scanTable tbody");
+    const pageInfo        = document.getElementById("pageInfo");
+    const prevPageBtn     = document.getElementById("prevPage");
+    const nextPageBtn     = document.getElementById("nextPage");
+    const searchInput     = document.getElementById("searchInput");
+    const stateFilter     = document.getElementById("stateFilter");
+    const toast           = document.getElementById("toast");
+
+    // Modal y campos de incidencia
+    const modal           = document.getElementById("incidenceModal");
+    const incPaquete      = document.getElementById("incPaquete");
+    const incTipo         = document.getElementById("incTipo");
+    const incDesc         = document.getElementById("incDesc");
+    const incAdjuntos     = document.getElementById("incAdjuntos");
+    const incCancel       = document.getElementById("incCancel");
+    const incSave         = document.getElementById("incSave");
+
+    // Carga TODO el historial de paquetes
     async function loadAllPackages() {
       try {
         const resp = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/all");
-        const paquetes = await resp.json();  // asume [{ paquete_id, estado_actual, historial:[{estado,fecha},...], ...}, ...]
+        const paquetes = await resp.json();
         tableData = paquetes.map(p => {
           const h = p.historial;
           return {
@@ -254,7 +347,7 @@
       }
     }
 
-    // --- Scanner logic sin cambios ---
+    // --- Scanner logic ---
     document.getElementById("modeSelect").addEventListener("change", function() {
       mode = this.value;
       const text = this.options[this.selectedIndex].text;
@@ -294,7 +387,7 @@
           const code = sanitizeInput(this.value.trim());
           if (!code) return updateStatus("Por favor, escanea un código válido.", "error");
           const endpoint = mode==="recibido"
-            ? "/scanner/recibido" 
+            ? "/scanner/recibido"
             : `/scanner/${mode}`;
           try {
             const r = await fetch("https://servidor-backend-paquetes.onrender.com"+endpoint, {
@@ -305,7 +398,6 @@
             if (r.ok) {
               updateStatus("Operación correcta", "success");
               showToast(`Paquete ${code} actualizado`, "success");
-              // recarga historial para reflejar cambios
               await loadAllPackages();
             } else {
               const err = (await r.json()).error;
@@ -330,19 +422,52 @@
     }
 
     function showToast(msg, type) {
-      const t = document.getElementById("toast");
-      t.innerText = msg;
-      t.className = `show ${type}`;
-      setTimeout(() => t.className = "", 3000);
+      toast.innerText = msg;
+      toast.className = `show ${type}`;
+      setTimeout(() => toast.className = "", 3000);
     }
 
+    // --- Incidencias: modal ---
+    document.addEventListener("click", e => {
+      if (e.target.classList.contains("report-btn")) {
+        incPaquete.value = e.target.dataset.id;
+        incTipo.value = "";
+        incDesc.value = "";
+        incAdjuntos.value = "";
+        modal.style.display = "flex";
+      }
+    });
+    incCancel.addEventListener("click", () => modal.style.display = "none");
+    incSave.addEventListener("click", async () => {
+      const form = new FormData();
+      form.append("paquete_id", incPaquete.value);
+      form.append("tipo", incTipo.value);
+      form.append("descripcion", incDesc.value);
+      Array.from(incAdjuntos.files).forEach(f => form.append("adjuntos", f));
+      try {
+        const r = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias", {
+          method: "POST",
+          body: form
+        });
+        const json = await r.json();
+        if (r.ok) {
+          showToast("Incidencia creada correctamente", "success");
+          modal.style.display = "none";
+        } else {
+          showToast(json.error || "Error al crear incidencia", "error");
+        }
+      } catch {
+        showToast("Error de red", "error");
+      }
+    });
+
     // --- Filtros y tabla ---
-    document.getElementById("searchInput").addEventListener("input", e => {
+    searchInput.addEventListener("input", e => {
       filterText = e.target.value.toLowerCase();
       currentPage = 1;
       renderTable();
     });
-    document.getElementById("stateFilter").addEventListener("change", e => {
+    stateFilter.addEventListener("change", e => {
       filterState = e.target.value;
       currentPage = 1;
       renderTable();
@@ -355,19 +480,19 @@
         renderTable();
       });
     });
-    document.getElementById("prevPage").addEventListener("click", () => {
-      if (currentPage>1) { currentPage--; renderTable(); }
+    prevPageBtn.addEventListener("click", () => {
+      if (currentPage > 1) { currentPage--; renderTable(); }
     });
-    document.getElementById("nextPage").addEventListener("click", () => {
-      const maxp = Math.ceil(filteredData().length/pageSize);
-      if (currentPage<maxp) { currentPage++; renderTable(); }
+    nextPageBtn.addEventListener("click", () => {
+      const maxp = Math.ceil(filteredData().length / pageSize);
+      if (currentPage < maxp) { currentPage++; renderTable(); }
     });
 
     function filteredData() {
-      return tableData.filter(r => {
-        return (!filterText  || r.id.toLowerCase().includes(filterText))
-            && (!filterState || r.new === filterState);
-      });
+      return tableData.filter(r =>
+        (!filterText || r.id.toLowerCase().includes(filterText)) &&
+        (!filterState || r.new === filterState)
+      );
     }
 
     function renderTable() {
@@ -376,11 +501,13 @@
         if (a[sortCol] > b[sortCol]) return sortAsc ? 1 : -1;
         return 0;
       });
-      const start = (currentPage-1)*pageSize;
-      const page = data.slice(start, start+pageSize);
+      // actualiza contador
+      counterEl.innerText = `Mostrando ${data.length} de ${tableData.length} paquetes`;
 
-      const tbody = document.querySelector("#scanTable tbody");
-      tbody.innerHTML = "";
+      const start = (currentPage - 1) * pageSize;
+      const page = data.slice(start, start + pageSize);
+
+      tableBody.innerHTML = "";
       page.forEach(r => {
         const tr = document.createElement("tr");
         ['time','id','prev','new','notes'].forEach(key => {
@@ -388,18 +515,24 @@
           td.innerText = r[key];
           tr.appendChild(td);
         });
-        tr.addEventListener("click", () => {
-          alert(`Detalle:\n${JSON.stringify(r,null,2)}`);
-        });
-        tbody.appendChild(tr);
+        // columna de acciones
+        const tdAct = document.createElement("td");
+        const btn = document.createElement("button");
+        btn.innerText = "Reportar incidencia";
+        btn.className = "report-btn";
+        btn.setAttribute("data-id", r.id);
+        tdAct.appendChild(btn);
+        tr.appendChild(tdAct);
+
+        tableBody.appendChild(tr);
       });
-      document.getElementById("pageInfo").innerText =
-        `Página ${currentPage} de ${Math.max(1,Math.ceil(data.length/pageSize))}`;
-      document.getElementById("prevPage").disabled = currentPage===1;
-      document.getElementById("nextPage").disabled = currentPage>=Math.ceil(data.length/pageSize);
+
+      pageInfo.innerText = `Página ${currentPage} de ${Math.max(1,Math.ceil(data.length/pageSize))}`;
+      prevPageBtn.disabled = currentPage === 1;
+      nextPageBtn.disabled = currentPage >= Math.ceil(data.length/pageSize);
     }
 
-    // Al iniciar, cargamos TODOS los paquetes
+    // Arranca cargando todo
     loadAllPackages();
   </script>
 </body>
