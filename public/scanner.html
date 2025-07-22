@@ -3,214 +3,537 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Escáner de Código de Barras</title>
+  <title>Scanner de rastreo</title>
   <style>
+    /* Layout */
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: #333;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 1000;
+    }
+    header .logo img {
+      height: 40px;
+      margin-right: 20px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    #container {
+      display: flex;
+      flex: 1;
+      padding-top: 60px; /* espacio para header */
+    }
+    aside {
+      width: 20%;
+      background: #f4f4f4;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    aside nav a {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      color: #333;
+      text-decoration: none;
+    }
+    aside nav a .icon {
+      margin-right: 8px;
+    }
+    main {
+      flex: 1;
+      padding: 20px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    /* Scanner widget */
+    #scannerWidget {
+      background: #fafafa;
+      padding: 15px;
+      border: 1px solid #ddd;
+      margin-bottom: 30px;
+    }
+    #scannerWidget label,
+    #scannerWidget select,
+    #scannerWidget input {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+    }
     #status {
       margin-top: 10px;
-      font-size: 1rem;
+      font-size: 0.95rem;
     }
-    .success {
-      color: green;
+    .success { color: green; }
+    .error   { color: red; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      top: 70px; right: 20px;
+      padding: 10px 15px;
+      background: #333;
+      color: #fff;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 1001;
     }
-    .error {
-      color: red;
+    #toast.show { opacity: 1; }
+    #toast.success { background: green; }
+    #toast.error   { background: red; }
+
+    /* Table */
+    #tableControls {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    #asciiOutput {
+    #counter {
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    #scanTable {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #scanTable th, #scanTable td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    #scanTable th {
+      cursor: pointer;
+      background: #eee;
+    }
+    #pagination {
       margin-top: 10px;
-      font-size: 0.9rem;
-      color: blue;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #pagination button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    /* Modal de incidencia */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1002;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 4px;
+      width: 400px;
+      max-width: 90%;
+    }
+    .modal-content h2 {
+      margin-top: 0;
+    }
+    .modal-content label {
+      margin: 10px 0 4px;
+      display: block;
+    }
+    .modal-content input[type="text"],
+    .modal-content select,
+    .modal-content textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .modal-content textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .modal-content .buttons {
+      margin-top: 15px;
+      text-align: right;
+      gap: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>Escáner de Código de Barras</h1>
-  <p id="mode">Modo actual: <strong>Recibido</strong></p>
-  <button onclick="toggleMode()">Cambiar Modo</button>
-  <!-- Menú desplegable oculto hasta pulsar el botón -->
-  <select id="modeSelect" style="display:none;">
-    <option value="recibido">Recibido</option>
-    <option value="en-transito-nacional-mx">En tránsito nacional MX</option>
-    <option value="en-transito-nacional-eu">En tránsito nacional EU</option>
-    <option value="en-transito-internacional">En tránsito internacional</option>
-    <option value="en-almacen-eu">En almacén EU</option>
-    <option value="en-almacen-mx">En almacén MX</option>
-  </select>
+  <header>
+    <div class="logo">
+      <img src="./LOGO.png" alt="Logo Empresa">
+    </div>
+    <h1>Scanner de rastreo</h1>
+  </header>
 
-  <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus />
+  <div id="container">
+    <aside>
+      <nav>
+        <a href="#"><span class="icon">🔍</span>Escaneo</a>
+        <a href="#"><span class="icon">📜</span>Historial</a>
+        <a href="#"><span class="icon">⚠️</span>Incidencias</a>
+        <a href="#"><span class="icon">📊</span>Reportes</a>
+        <a href="#"><span class="icon">⚙️</span>Ajustes</a>
+      </nav>
+    </aside>
 
-  <p id="status" aria-live="polite"></p>
-  <p id="asciiOutput">Códigos ASCII detectados: <span></span></p>
+    <main>
+      <!-- Scanner Widget -->
+      <div id="scannerWidget">
+        <p id="mode">Modo actual: <strong>Recibido</strong></p>
+        <label for="modeSelect">Selecciona fase:</label>
+        <select id="modeSelect">
+          <optgroup label="Recepción">
+            <option value="recibido">Recibido</option>
+          </optgroup>
+          <optgroup label="Tránsito">
+            <option value="en-transito-nacional-mx">En tránsito nacional MX</option>
+            <option value="en-transito-nacional-eu">En tránsito nacional EU</option>
+            <option value="en-transito-internacional">En tránsito internacional</option>
+          </optgroup>
+          <optgroup label="Almacén">
+            <option value="en-almacen-eu">En almacén EU</option>
+            <option value="en-almacen-mx">En almacén MX</option>
+          </optgroup>
+        </select>
+
+        <label for="barcodeInput">Escanea o pega el código:</label>
+        <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus />
+
+        <p id="status" aria-live="polite"></p>
+      </div>
+
+      <!-- Contador y controles de tabla -->
+      <div id="counter">Mostrando 0 de 0 paquetes</div>
+      <div id="tableControls">
+        <input type="text" id="searchInput" placeholder="Buscar paquete…" />
+        <select id="stateFilter">
+          <option value="">Todos los estados</option>
+          <optgroup label="Recepción">
+            <option value="Recibido">Recibido</option>
+          </optgroup>
+          <optgroup label="Tránsito">
+            <option value="En tránsito nacional MX">En tránsito nacional MX</option>
+            <option value="En tránsito nacional EU">En tránsito nacional EU</option>
+            <option value="En tránsito internacional">En tránsito internacional</option>
+          </optgroup>
+          <optgroup label="Almacén">
+            <option value="En almacén EU">En almacén EU</option>
+            <option value="En almacén MX">En almacén MX</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- Tabla de historial / paquetes -->
+      <table id="scanTable">
+        <thead>
+          <tr>
+            <th data-col="time">Fecha y hora</th>
+            <th data-col="id">Paquete</th>
+            <th data-col="prev">Estado anterior</th>
+            <th data-col="new">Estado nuevo</th>
+            <th data-col="notes">Incidencias</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Filas generadas dinámicamente -->
+        </tbody>
+      </table>
+
+      <!-- Paginación -->
+      <div id="pagination">
+        <button id="prevPage">Anterior</button>
+        <span id="pageInfo">Página 1</span>
+        <button id="nextPage">Siguiente</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal de nuevo/incidencia -->
+  <div id="incidenceModal" class="modal">
+    <div class="modal-content">
+      <h2>Reportar incidencia</h2>
+      <label for="incPaquete">Paquete</label>
+      <input type="text" id="incPaquete" readonly />
+
+      <label for="incTipo">Tipo de incidencia</label>
+      <select id="incTipo">
+        <option value="">-- Seleccione --</option>
+        <option value="Dañado">Dañado</option>
+        <option value="Falta docs">Falta docs</option>
+        <option value="Dirección incorrecta">Dirección incorrecta</option>
+        <option value="Cliente ausente">Cliente ausente</option>
+        <option value="Otro">Otro</option>
+      </select>
+
+      <label for="incDesc">Descripción</label>
+      <textarea id="incDesc"></textarea>
+
+      <label for="incAdjuntos">Adjuntar fotos/documentos</label>
+      <input type="file" id="incAdjuntos" multiple />
+
+      <div class="buttons">
+        <button id="incCancel">Cancelar</button>
+        <button id="incSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
 
   <script>
-    // Este mensaje se debe imprimir inmediatamente en la consola
     console.log("Script cargado correctamente");
 
-    let mode = "recibido"; // Modo inicial
+    // --- Variables y carga inicial ---
+    let mode = "recibido";
+    let tableData = [];
+    let sortCol = 'time', sortAsc = false;
+    let filterText = '', filterState = '';
+    let currentPage = 1, pageSize = 10;
 
-    // Muestra/oculta el select cuando se pulsa el botón
-    function toggleMode() {
-      const sel = document.getElementById("modeSelect");
-      sel.style.display = sel.style.display === "none" ? "inline-block" : "none";
+    const counterEl       = document.getElementById("counter");
+    const tableBody       = document.querySelector("#scanTable tbody");
+    const pageInfo        = document.getElementById("pageInfo");
+    const prevPageBtn     = document.getElementById("prevPage");
+    const nextPageBtn     = document.getElementById("nextPage");
+    const searchInput     = document.getElementById("searchInput");
+    const stateFilter     = document.getElementById("stateFilter");
+    const toast           = document.getElementById("toast");
+
+    // Modal y campos de incidencia
+    const modal           = document.getElementById("incidenceModal");
+    const incPaquete      = document.getElementById("incPaquete");
+    const incTipo         = document.getElementById("incTipo");
+    const incDesc         = document.getElementById("incDesc");
+    const incAdjuntos     = document.getElementById("incAdjuntos");
+    const incCancel       = document.getElementById("incCancel");
+    const incSave         = document.getElementById("incSave");
+
+    // Carga TODO el historial de paquetes
+    async function loadAllPackages() {
+      try {
+        const resp = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/all");
+        const paquetes = await resp.json();
+        tableData = paquetes.map(p => {
+          const h = p.historial;
+          return {
+            time: h[h.length-1].fecha,
+            id: p.paquete_id,
+            prev: h.length>1 ? h[h.length-2].estado : "",
+            new: p.estado_actual,
+            notes: ""
+          };
+        });
+        renderTable();
+      } catch (e) {
+        console.error("No se pudo cargar historial:", e);
+      }
     }
 
-    // Cuando cambias la opción del select, actualiza el modo y la UI
+    // --- Scanner logic ---
     document.getElementById("modeSelect").addEventListener("change", function() {
       mode = this.value;
-      const label = this.options[this.selectedIndex].text;
-      document.getElementById("mode").innerHTML = `Modo actual: <strong>${label}</strong>`;
+      const text = this.options[this.selectedIndex].text;
+      document.getElementById("mode").innerHTML = `Modo actual: <strong>${text}</strong>`;
       clearStatus();
-      // ocultar de nuevo tras seleccionar
-      this.style.display = "none";
     });
 
-    // Limpia el mensaje de estado
     function clearStatus() {
-      const status = document.getElementById("status");
-      status.innerText = "";
-      status.className = "";
+      const s = document.getElementById("status");
+      s.innerText = "";
+      s.className = "";
     }
 
-    // Muestra en pantalla los códigos ASCII de cada carácter del texto
-    function showAsciiValues(text) {
-      const asciiOutput = document.getElementById("asciiOutput").querySelector("span");
-      asciiOutput.innerText = text
-        .split("")
-        .map((char) => `U+${char.charCodeAt(0).toString(16).toUpperCase()}`)
-        .join(" ");
-    }
-
-    // Función de sanitización: reemplaza cualquier carácter que NO sea dígito o letra (0-9, a-z, A-Z) por un guion (-)
-    function sanitizeInput(value) {
-      console.log("sanitizeInput - Valor original:", value);
-      const sanitized = value.replace(/[^0-9a-zA-Z]/g, "-");
-      console.log("sanitizeInput - Valor sanitizado:", sanitized);
-      return sanitized;
+    function sanitizeInput(v) {
+      return v.replace(/[^0-9a-zA-Z]/g, "-");
     }
 
     const barcodeInput = document.getElementById("barcodeInput");
-
-    // Evento "beforeinput": (aunque no siempre se dispara)
-    barcodeInput.addEventListener("beforeinput", function () {
-      console.log("Evento beforeinput - Valor actual:", this.value);
-      this.value = sanitizeInput(this.value);
-      console.log("Evento beforeinput - Valor luego:", this.value);
-    });
-
-    // Evento "input": se sanitiza el valor al escribir y se actualiza la visualización
-    barcodeInput.addEventListener("input", function () {
-      console.log("Evento input - Antes:", this.value);
-      this.value = sanitizeInput(this.value);
-      console.log("Evento input - Después:", this.value);
-      showAsciiValues(this.value);
-    });
-
-    // Evento "paste": si se pega texto, se sanitiza inmediatamente (después de un pequeño retraso)
-    barcodeInput.addEventListener("paste", function () {
-      setTimeout(() => {
-        console.log("Evento paste - Antes:", this.value);
-        this.value = sanitizeInput(this.value);
-        console.log("Evento paste - Después:", this.value);
-        showAsciiValues(this.value);
-      }, 50);
-    });
-
-    // Evento "keyup": se fuerza la sanitización al soltar la tecla
-    barcodeInput.addEventListener("keyup", function () {
-      console.log("Evento keyup - Antes:", this.value);
-      this.value = sanitizeInput(this.value);
-      console.log("Evento keyup - Después:", this.value);
-      showAsciiValues(this.value);
-    });
-
-    // Forzar sanitización periódica cada 25 ms para detectar inyecciones rápidas
-    setInterval(() => {
-      let currentValue = barcodeInput.value;
-      let sanitizedValue = sanitizeInput(currentValue);
-      if (currentValue !== sanitizedValue) {
-        console.log("Intervalo: Actualizando valor de", currentValue, "a", sanitizedValue);
-        barcodeInput.value = sanitizedValue;
-        showAsciiValues(sanitizedValue);
-      }
-    }, 25);
-
-    // MutationObserver para detectar cambios en el input
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        let newValue = sanitizeInput(barcodeInput.value);
-        if (barcodeInput.value !== newValue) {
-          console.log("MutationObserver: Cambió el valor a", barcodeInput.value, "-> Sanitizando a", newValue);
-          barcodeInput.value = newValue;
-          showAsciiValues(newValue);
-        }
+    ["beforeinput","input","paste","keyup"].forEach(evt => {
+      barcodeInput.addEventListener(evt, () => {
+        barcodeInput.value = sanitizeInput(barcodeInput.value);
       });
     });
-    observer.observe(barcodeInput, { childList: true, characterData: true, subtree: true });
+    setInterval(() => {
+      const v = sanitizeInput(barcodeInput.value);
+      if (barcodeInput.value !== v) barcodeInput.value = v;
+    }, 25);
+    new MutationObserver(() => {
+      const v = sanitizeInput(barcodeInput.value);
+      if (barcodeInput.value !== v) barcodeInput.value = v;
+    }).observe(barcodeInput, { childList:true,characterData:true,subtree:true });
 
-    // Función para sanitizar y enviar el código
-    async function sendBarcode(barcode) {
-      if (!barcode) {
-        updateStatus("Por favor, escanea un código válido.", "error");
-        return;
-      }
-
-      // Sanitización final antes de enviar (por si acaso)
-      const sanitizedBarcode = sanitizeInput(barcode);
-
-      // Para depuración: imprimir en consola cada carácter del valor final
-      console.log("Código final para enviar:");
-      for (let i = 0; i < sanitizedBarcode.length; i++) {
-        console.log(sanitizedBarcode.charAt(i) + " => U+" + sanitizedBarcode.charCodeAt(i).toString(16).toUpperCase());
-      }
-
-      // Configurar el endpoint según el modo actual
-      const endpoint = mode === "recibido"
-          ? "https://servidor-backend-paquetes.onrender.com/scanner/recibido"
-          : `https://servidor-backend-paquetes.onrender.com/scanner/${mode}`;
-
-      barcodeInput.disabled = true;
-      try {
-        console.log("Voy a ejecutar fetch con:", sanitizedBarcode);
-        const response = await fetch(endpoint, {
-          method: mode === "recibido" ? "POST" : "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paquete_id: sanitizedBarcode })
-        });
-        const result = await response.json();
-        if (response.ok) {
-          updateStatus(result.message || "Operación realizada correctamente.", "success");
-        } else {
-          updateStatus(result.error || "Ocurrió un error.", "error");
-        }
-      } catch (error) {
-        console.error("Error al enviar los datos:", error);
-        updateStatus("Error al conectar con el servidor.", "error");
-      } finally {
-        barcodeInput.value = "";
-        barcodeInput.disabled = false;
-        barcodeInput.focus();
-      }
-    }
-
-    // Actualiza el mensaje de estado (con un tiempo de limpieza)
-    function updateStatus(message, statusClass) {
-      const status = document.getElementById("status");
-      status.innerText = message;
-      status.className = statusClass;
-      setTimeout(clearStatus, 5000);
-    }
-
-    // Evento "keydown": detecta la tecla Enter y, con un retraso, envía el código sanitizado
-    barcodeInput.addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        // Se introduce un retraso de 150 ms para asegurar que la sanitización se procese
-        setTimeout(() => {
-          let barcode = sanitizeInput(this.value.trim());
-          console.log("Evento keydown - Código sanitizado antes de enviar:", barcode);
-          sendBarcode(barcode);
+    barcodeInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setTimeout(async () => {
+          const code = sanitizeInput(this.value.trim());
+          if (!code) return updateStatus("Por favor, escanea un código válido.", "error");
+          const endpoint = mode==="recibido"
+            ? "/scanner/recibido"
+            : `/scanner/${mode}`;
+          try {
+            const r = await fetch("https://servidor-backend-paquetes.onrender.com"+endpoint, {
+              method: mode==="recibido"?"POST":"PUT",
+              headers:{ "Content-Type":"application/json" },
+              body: JSON.stringify({ paquete_id: code })
+            });
+            if (r.ok) {
+              updateStatus("Operación correcta", "success");
+              showToast(`Paquete ${code} actualizado`, "success");
+              await loadAllPackages();
+            } else {
+              const err = (await r.json()).error;
+              updateStatus(err, "error");
+              showToast(err, "error");
+            }
+          } catch {
+            updateStatus("Error de red.", "error");
+            showToast("Error de red", "error");
+          } finally {
+            barcodeInput.value = "";
+          }
         }, 150);
       }
     });
+
+    function updateStatus(msg, cls) {
+      const s = document.getElementById("status");
+      s.innerText = msg;
+      s.className = cls;
+      setTimeout(clearStatus, 5000);
+    }
+
+    function showToast(msg, type) {
+      toast.innerText = msg;
+      toast.className = `show ${type}`;
+      setTimeout(() => toast.className = "", 3000);
+    }
+
+    // --- Incidencias: modal ---
+    document.addEventListener("click", e => {
+      if (e.target.classList.contains("report-btn")) {
+        incPaquete.value = e.target.dataset.id;
+        incTipo.value = "";
+        incDesc.value = "";
+        incAdjuntos.value = "";
+        modal.style.display = "flex";
+      }
+    });
+    incCancel.addEventListener("click", () => modal.style.display = "none");
+    incSave.addEventListener("click", async () => {
+      const form = new FormData();
+      form.append("paquete_id", incPaquete.value);
+      form.append("tipo", incTipo.value);
+      form.append("descripcion", incDesc.value);
+      Array.from(incAdjuntos.files).forEach(f => form.append("adjuntos", f));
+      try {
+        const r = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias", {
+          method: "POST",
+          body: form
+        });
+        const json = await r.json();
+        if (r.ok) {
+          showToast("Incidencia creada correctamente", "success");
+          modal.style.display = "none";
+        } else {
+          showToast(json.error || "Error al crear incidencia", "error");
+        }
+      } catch {
+        showToast("Error de red", "error");
+      }
+    });
+
+    // --- Filtros y tabla ---
+    searchInput.addEventListener("input", e => {
+      filterText = e.target.value.toLowerCase();
+      currentPage = 1;
+      renderTable();
+    });
+    stateFilter.addEventListener("change", e => {
+      filterState = e.target.value;
+      currentPage = 1;
+      renderTable();
+    });
+    document.querySelectorAll("#scanTable th").forEach(th => {
+      th.addEventListener("click", () => {
+        const col = th.dataset.col;
+        sortAsc = (sortCol === col) ? !sortAsc : true;
+        sortCol = col;
+        renderTable();
+      });
+    });
+    prevPageBtn.addEventListener("click", () => {
+      if (currentPage > 1) { currentPage--; renderTable(); }
+    });
+    nextPageBtn.addEventListener("click", () => {
+      const maxp = Math.ceil(filteredData().length / pageSize);
+      if (currentPage < maxp) { currentPage++; renderTable(); }
+    });
+
+    function filteredData() {
+      return tableData.filter(r =>
+        (!filterText || r.id.toLowerCase().includes(filterText)) &&
+        (!filterState || r.new === filterState)
+      );
+    }
+
+    function renderTable() {
+      let data = filteredData().sort((a,b) => {
+        if (a[sortCol] < b[sortCol]) return sortAsc ? -1 : 1;
+        if (a[sortCol] > b[sortCol]) return sortAsc ? 1 : -1;
+        return 0;
+      });
+      // actualiza contador
+      counterEl.innerText = `Mostrando ${data.length} de ${tableData.length} paquetes`;
+
+      const start = (currentPage - 1) * pageSize;
+      const page = data.slice(start, start + pageSize);
+
+      tableBody.innerHTML = "";
+      page.forEach(r => {
+        const tr = document.createElement("tr");
+        ['time','id','prev','new','notes'].forEach(key => {
+          const td = document.createElement("td");
+          td.innerText = r[key];
+          tr.appendChild(td);
+        });
+        // columna de acciones
+        const tdAct = document.createElement("td");
+        const btn = document.createElement("button");
+        btn.innerText = "Reportar incidencia";
+        btn.className = "report-btn";
+        btn.setAttribute("data-id", r.id);
+        tdAct.appendChild(btn);
+        tr.appendChild(tdAct);
+
+        tableBody.appendChild(tr);
+      });
+
+      pageInfo.innerText = `Página ${currentPage} de ${Math.max(1,Math.ceil(data.length/pageSize))}`;
+      prevPageBtn.disabled = currentPage === 1;
+      nextPageBtn.disabled = currentPage >= Math.ceil(data.length/pageSize);
+    }
+
+    // Arranca cargando todo
+    loadAllPackages();
   </script>
 </body>
 </html>
