@@ -2,175 +2,125 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scanner de rastreo</title>
   <style>
     /* Layout */
     body {
-      margin: 0;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+      margin: 0; font-family: sans-serif;
+      display: flex; flex-direction: column; height: 100vh;
     }
     header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: 60px;
-      background: #333;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 60px; background: #333; color: #fff;
+      display: flex; align-items: center; padding: 0 20px;
       z-index: 1000;
     }
     header .logo img {
-      height: 40px;
-      margin-right: 20px;
+      height: 40px; margin-right: 20px;
     }
     header h1 {
-      margin: 0;
-      font-size: 1.2rem;
+      margin: 0; font-size: 1.2rem;
     }
     #container {
-      display: flex;
-      flex: 1;
-      padding-top: 60px; /* espacio para header */
+      display: flex; flex: 1; padding-top: 60px;
     }
     aside {
-      width: 20%;
-      background: #f4f4f4;
-      padding: 20px;
-      box-sizing: border-box;
+      width: 20%; background: #f4f4f4;
+      padding: 20px; box-sizing: border-box;
     }
     aside nav a {
-      display: flex;
-      align-items: center;
-      padding: 8px 0;
-      color: #333;
-      text-decoration: none;
+      display: flex; align-items: center;
+      padding: 8px 0; color: #333; text-decoration: none;
     }
     aside nav a .icon {
       margin-right: 8px;
     }
     main {
-      flex: 1;
-      padding: 20px;
-      box-sizing: border-box;
-      overflow-y: auto;
+      flex: 1; padding: 20px;
+      box-sizing: border-box; overflow-y: auto;
     }
 
     /* Scanner widget */
     #scannerWidget {
-      background: #fafafa;
-      padding: 15px;
-      border: 1px solid #ddd;
-      margin-bottom: 30px;
+      background: #fafafa; padding: 15px;
+      border: 1px solid #ddd; margin-bottom: 30px;
     }
     #scannerWidget label,
     #scannerWidget select,
     #scannerWidget input {
-      display: block;
-      width: 100%;
-      margin-bottom: 10px;
+      display: block; width: 100%; margin-bottom: 10px;
     }
     #status {
-      margin-top: 10px;
-      font-size: 0.95rem;
+      margin-top: 10px; font-size: 0.95rem;
     }
     .success { color: green; }
     .error   { color: red; }
 
     /* Toast */
     #toast {
-      position: fixed;
-      top: 70px; right: 20px;
-      padding: 10px 15px;
-      background: #333;
-      color: #fff;
-      border-radius: 4px;
-      opacity: 0;
-      transition: opacity 0.3s;
+      position: fixed; top: 70px; right: 20px;
+      padding: 10px 15px; background: #333; color: #fff;
+      border-radius: 4px; opacity: 0; transition: opacity 0.3s;
       z-index: 1001;
     }
     #toast.show { opacity: 1; }
     #toast.success { background: green; }
     #toast.error   { background: red; }
 
-    /* Table */
-    #tableControls {
+    /* Tables */
+    #tableControls,
+    #incTableControls {
       margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: flex; align-items: center; gap: 10px;
     }
     #counter {
-      margin-bottom: 8px;
-      font-weight: bold;
+      margin-bottom: 8px; font-weight: bold;
     }
-    #scanTable {
-      width: 100%;
-      border-collapse: collapse;
+    table {
+      width: 100%; border-collapse: collapse;
     }
-    #scanTable th, #scanTable td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: left;
+    th, td {
+      border: 1px solid #ccc; padding: 8px; text-align: left;
     }
-    #scanTable th {
-      cursor: pointer;
-      background: #eee;
+    th {
+      cursor: pointer; background: #eee;
     }
-    #pagination {
-      margin-top: 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    #pagination, #incPagination {
+      margin-top: 10px; display: flex;
+      align-items: center; gap: 10px;
     }
-    #pagination button:disabled {
-      opacity: 0.5;
-      cursor: default;
+    #pagination button:disabled,
+    #incPagination button:disabled {
+      opacity: 0.5; cursor: default;
     }
 
-    /* Modal de incidencia */
+    /* Modal */
     .modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      display: none; position: fixed;
+      top:0; left:0; width:100%; height:100%;
       background: rgba(0,0,0,0.5);
-      align-items: center;
-      justify-content: center;
+      align-items: center; justify-content: center;
       z-index: 1002;
     }
     .modal-content {
-      background: #fff;
-      padding: 20px;
-      border-radius: 4px;
-      width: 400px;
-      max-width: 90%;
+      background:#fff; padding:20px;
+      border-radius:4px; width:400px; max-width:90%;
     }
-    .modal-content h2 {
-      margin-top: 0;
-    }
+    .modal-content h2 { margin-top:0; }
     .modal-content label {
-      margin: 10px 0 4px;
-      display: block;
+      margin:10px 0 4px; display:block;
     }
     .modal-content input[type="text"],
     .modal-content select,
     .modal-content textarea {
-      width: 100%;
-      box-sizing: border-box;
+      width:100%; box-sizing:border-box;
     }
     .modal-content textarea {
-      resize: vertical;
-      min-height: 60px;
+      resize:vertical; min-height:60px;
     }
     .modal-content .buttons {
-      margin-top: 15px;
-      text-align: right;
-      gap: 10px;
+      margin-top:15px; text-align:right; gap:10px;
     }
   </style>
 </head>
@@ -185,94 +135,126 @@
   <div id="container">
     <aside>
       <nav>
-        <a href="#"><span class="icon">🔍</span>Escaneo</a>
-        <a href="#"><span class="icon">📜</span>Historial</a>
-        <a href="#"><span class="icon">⚠️</span>Incidencias</a>
+        <a href="#" id="nav-escaneo"><span class="icon">🔍</span>Escaneo</a>
+        <a href="#" id="nav-historial"><span class="icon">📜</span>Historial</a>
+        <a href="#" id="nav-incidencias"><span class="icon">⚠️</span>Incidencias</a>
         <a href="#"><span class="icon">📊</span>Reportes</a>
         <a href="#"><span class="icon">⚙️</span>Ajustes</a>
       </nav>
     </aside>
 
     <main>
-      <!-- Scanner Widget -->
-      <div id="scannerWidget">
-        <p id="mode">Modo actual: <strong>Recibido</strong></p>
-        <label for="modeSelect">Selecciona fase:</label>
-        <select id="modeSelect">
-          <optgroup label="Recepción">
-            <option value="recibido">Recibido</option>
-          </optgroup>
-          <optgroup label="Tránsito">
-            <option value="en-transito-nacional-mx">En tránsito nacional MX</option>
-            <option value="en-transito-nacional-eu">En tránsito nacional EU</option>
-            <option value="en-transito-internacional">En tránsito internacional</option>
-          </optgroup>
-          <optgroup label="Almacén">
-            <option value="en-almacen-eu">En almacén EU</option>
-            <option value="en-almacen-mx">En almacén MX</option>
-          </optgroup>
-        </select>
+      <!-- ESCANEO -->
+      <section id="view-escaneo">
+        <div id="scannerWidget">
+          <p id="mode">Modo actual: <strong>Recibido</strong></p>
+          <label for="modeSelect">Selecciona fase:</label>
+          <select id="modeSelect">
+            <optgroup label="Recepción">
+              <option value="recibido">Recibido</option>
+            </optgroup>
+            <optgroup label="Tránsito">
+              <option value="en-transito-nacional-mx">En tránsito nacional MX</option>
+              <option value="en-transito-nacional-eu">En tránsito nacional EU</option>
+              <option value="en-transito-internacional">En tránsito internacional</option>
+            </optgroup>
+            <optgroup label="Almacén">
+              <option value="en-almacen-eu">En almacén EU</option>
+              <option value="en-almacen-mx">En almacén MX</option>
+            </optgroup>
+          </select>
+          <label for="barcodeInput">Escanea o pega el código:</label>
+          <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus>
+          <p id="status" aria-live="polite"></p>
+        </div>
+      </section>
 
-        <label for="barcodeInput">Escanea o pega el código:</label>
-        <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus />
+      <!-- HISTORIAL DE PAQUETES -->
+      <section id="view-historial" style="display:none;">
+        <div id="counter">Mostrando 0 de 0 paquetes</div>
+        <div id="tableControls">
+          <input type="text" id="searchInput" placeholder="Buscar paquete…">
+          <select id="stateFilter">
+            <option value="">Todos los estados</option>
+            <optgroup label="Recepción"><option value="Recibido">Recibido</option></optgroup>
+            <optgroup label="Tránsito">
+              <option value="En tránsito nacional MX">En tránsito nacional MX</option>
+              <option value="En tránsito nacional EU">En tránsito nacional EU</option>
+              <option value="En tránsito internacional">En tránsito internacional</option>
+            </optgroup>
+            <optgroup label="Almacén">
+              <option value="En almacén EU">En almacén EU</option>
+              <option value="En almacén MX">En almacén MX</option>
+            </optgroup>
+          </select>
+        </div>
+        <table id="scanTable">
+          <thead>
+            <tr>
+              <th data-col="time">Fecha y hora</th>
+              <th data-col="id">Paquete</th>
+              <th data-col="prev">Estado anterior</th>
+              <th data-col="new">Estado nuevo</th>
+              <th data-col="notes">Incidencias</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="pagination">
+          <button id="prevPage">Anterior</button>
+          <span id="pageInfo">Página 1</span>
+          <button id="nextPage">Siguiente</button>
+        </div>
+      </section>
 
-        <p id="status" aria-live="polite"></p>
-      </div>
-
-      <!-- Contador y controles de tabla -->
-      <div id="counter">Mostrando 0 de 0 paquetes</div>
-      <div id="tableControls">
-        <input type="text" id="searchInput" placeholder="Buscar paquete…" />
-        <select id="stateFilter">
-          <option value="">Todos los estados</option>
-          <optgroup label="Recepción">
-            <option value="Recibido">Recibido</option>
-          </optgroup>
-          <optgroup label="Tránsito">
-            <option value="En tránsito nacional MX">En tránsito nacional MX</option>
-            <option value="En tránsito nacional EU">En tránsito nacional EU</option>
-            <option value="En tránsito internacional">En tránsito internacional</option>
-          </optgroup>
-          <optgroup label="Almacén">
-            <option value="En almacén EU">En almacén EU</option>
-            <option value="En almacén MX">En almacén MX</option>
-          </optgroup>
-        </select>
-      </div>
-
-      <!-- Tabla de historial / paquetes -->
-      <table id="scanTable">
-        <thead>
-          <tr>
-            <th data-col="time">Fecha y hora</th>
-            <th data-col="id">Paquete</th>
-            <th data-col="prev">Estado anterior</th>
-            <th data-col="new">Estado nuevo</th>
-            <th data-col="notes">Incidencias</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Filas generadas dinámicamente -->
-        </tbody>
-      </table>
-
-      <!-- Paginación -->
-      <div id="pagination">
-        <button id="prevPage">Anterior</button>
-        <span id="pageInfo">Página 1</span>
-        <button id="nextPage">Siguiente</button>
-      </div>
+      <!-- INCIDENCIAS -->
+      <section id="view-incidencias" style="display:none;">
+        <div id="incTableControls">
+          <input type="text" id="incSearch" placeholder="Buscar ID o paquete…">
+          <select id="incTipoFilter">
+            <option value="">Todos los tipos</option>
+            <option value="Dañado">Dañado</option>
+            <option value="Falta docs">Falta docs</option>
+            <option value="Dirección incorrecta">Dirección incorrecta</option>
+            <option value="Cliente ausente">Cliente ausente</option>
+            <option value="Otro">Otro</option>
+          </select>
+          <select id="incEstadoFilter">
+            <option value="">Todos los estados</option>
+            <option value="Abierta">Abierta</option>
+            <option value="En proceso">En proceso</option>
+            <option value="Cerrada">Cerrada</option>
+          </select>
+        </div>
+        <table id="incTable">
+          <thead>
+            <tr>
+              <th data-col="_id">ID</th>
+              <th data-col="paquete_id">Paquete</th>
+              <th data-col="tipo">Tipo</th>
+              <th data-col="estado">Estado</th>
+              <th data-col="fecha_creacion">Fecha creación</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="incPagination">
+          <button id="incPrev">Anterior</button>
+          <span id="incPageInfo">Página 1</span>
+          <button id="incNext">Siguiente</button>
+        </div>
+      </section>
     </main>
   </div>
 
-  <!-- Modal de nuevo/incidencia -->
+  <!-- Modal para reportar incidencia -->
   <div id="incidenceModal" class="modal">
     <div class="modal-content">
       <h2>Reportar incidencia</h2>
       <label for="incPaquete">Paquete</label>
-      <input type="text" id="incPaquete" readonly />
-
+      <input type="text" id="incPaquete" readonly>
       <label for="incTipo">Tipo de incidencia</label>
       <select id="incTipo">
         <option value="">-- Seleccione --</option>
@@ -282,13 +264,10 @@
         <option value="Cliente ausente">Cliente ausente</option>
         <option value="Otro">Otro</option>
       </select>
-
       <label for="incDesc">Descripción</label>
       <textarea id="incDesc"></textarea>
-
       <label for="incAdjuntos">Adjuntar fotos/documentos</label>
-      <input type="file" id="incAdjuntos" multiple />
-
+      <input type="file" id="incAdjuntos" multiple>
       <div class="buttons">
         <button id="incCancel">Cancelar</button>
         <button id="incSave">Guardar</button>
@@ -301,15 +280,19 @@
   <script>
     console.log("Script cargado correctamente");
 
-    // --- Variables y carga inicial ---
-    let mode = "recibido";
-    let tableData = [];
-    let sortCol = 'time', sortAsc = false;
-    let filterText = '', filterState = '';
-    let currentPage = 1, pageSize = 10;
+    // — Variables y estado —
+    let mode="recibido";
+    let tableData=[], sortCol="time", sortAsc=false;
+    let filterText="", filterState="";
+    let currentPage=1, pageSize=10;
 
+    let incData=[], incSortCol="fecha_creacion", incSortAsc=false;
+    let incFilterText="", incFilterTipo="", incFilterEstado="";
+    let incPage=1, incPageSize=10;
+
+    // — Elementos —
     const counterEl       = document.getElementById("counter");
-    const tableBody       = document.querySelector("#scanTable tbody");
+    const scanTbody       = document.querySelector("#scanTable tbody");
     const pageInfo        = document.getElementById("pageInfo");
     const prevPageBtn     = document.getElementById("prevPage");
     const nextPageBtn     = document.getElementById("nextPage");
@@ -317,7 +300,14 @@
     const stateFilter     = document.getElementById("stateFilter");
     const toast           = document.getElementById("toast");
 
-    // Modal y campos de incidencia
+    const incTbody        = document.querySelector("#incTable tbody");
+    const incPrevBtn      = document.getElementById("incPrev");
+    const incNextBtn      = document.getElementById("incNext");
+    const incPageInfo     = document.getElementById("incPageInfo");
+    const incSearch       = document.getElementById("incSearch");
+    const incTipoFilter   = document.getElementById("incTipoFilter");
+    const incEstadoFilter = document.getElementById("incEstadoFilter");
+
     const modal           = document.getElementById("incidenceModal");
     const incPaquete      = document.getElementById("incPaquete");
     const incTipo         = document.getElementById("incTipo");
@@ -326,214 +316,305 @@
     const incCancel       = document.getElementById("incCancel");
     const incSave         = document.getElementById("incSave");
 
-    // Carga TODO el historial de paquetes
-    async function loadAllPackages() {
-      try {
-        const resp = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/all");
-        const paquetes = await resp.json();
-        tableData = paquetes.map(p => {
-          const h = p.historial;
-          return {
-            time: h[h.length-1].fecha,
-            id: p.paquete_id,
-            prev: h.length>1 ? h[h.length-2].estado : "",
-            new: p.estado_actual,
-            notes: ""
-          };
-        });
-        renderTable();
-      } catch (e) {
-        console.error("No se pudo cargar historial:", e);
-      }
+    const modeSelect      = document.getElementById("modeSelect");
+    const barcodeInput    = document.getElementById("barcodeInput");
+    const statusEl        = document.getElementById("status");
+
+    // — Utilidades —
+    function clearStatus(){
+      statusEl.innerText="";
+      statusEl.className="";
+    }
+    function updateStatus(msg,cls){
+      statusEl.innerText=msg;
+      statusEl.className=cls;
+      setTimeout(clearStatus,5000);
+    }
+    function showToast(msg,type){
+      toast.innerText=msg;
+      toast.className=`show ${type}`;
+      setTimeout(()=>toast.className="",3000);
+    }
+    function sanitizeInput(v){
+      return v.replace(/[^0-9a-zA-Z]/g,"-");
     }
 
-    // --- Scanner logic ---
-    document.getElementById("modeSelect").addEventListener("change", function() {
-      mode = this.value;
-      const text = this.options[this.selectedIndex].text;
-      document.getElementById("mode").innerHTML = `Modo actual: <strong>${text}</strong>`;
+    // — Vistas —
+    function showView(v){
+      ["view-escaneo","view-historial","view-incidencias"]
+        .forEach(id=>document.getElementById(id).style.display=id===v?"block":"none");
+    }
+    document.getElementById("nav-escaneo").onclick     =()=>showView("view-escaneo");
+    document.getElementById("nav-historial").onclick   =()=>showView("view-historial");
+    document.getElementById("nav-incidencias").onclick =()=>{
+      showView("view-incidencias");
+      loadIncidencias();
+    };
+
+    // — Scanner / Paquetes —
+    modeSelect.addEventListener("change",()=>{
+      mode=modeSelect.value;
+      document.getElementById("mode").innerHTML=
+        `Modo actual: <strong>${modeSelect.options[modeSelect.selectedIndex].text}</strong>`;
       clearStatus();
     });
-
-    function clearStatus() {
-      const s = document.getElementById("status");
-      s.innerText = "";
-      s.className = "";
-    }
-
-    function sanitizeInput(v) {
-      return v.replace(/[^0-9a-zA-Z]/g, "-");
-    }
-
-    const barcodeInput = document.getElementById("barcodeInput");
-    ["beforeinput","input","paste","keyup"].forEach(evt => {
-      barcodeInput.addEventListener(evt, () => {
-        barcodeInput.value = sanitizeInput(barcodeInput.value);
-      });
+    ["beforeinput","input","paste","keyup"].forEach(evt=>{
+      barcodeInput.addEventListener(evt,()=>barcodeInput.value=sanitizeInput(barcodeInput.value));
     });
-    setInterval(() => {
-      const v = sanitizeInput(barcodeInput.value);
-      if (barcodeInput.value !== v) barcodeInput.value = v;
-    }, 25);
-    new MutationObserver(() => {
-      const v = sanitizeInput(barcodeInput.value);
-      if (barcodeInput.value !== v) barcodeInput.value = v;
-    }).observe(barcodeInput, { childList:true,characterData:true,subtree:true });
+    setInterval(()=>{
+      const v=sanitizeInput(barcodeInput.value);
+      if(barcodeInput.value!==v)barcodeInput.value=v;
+    },25);
+    new MutationObserver(()=>{
+      const v=sanitizeInput(barcodeInput.value);
+      if(barcodeInput.value!==v)barcodeInput.value=v;
+    }).observe(barcodeInput,{childList:true,characterData:true,subtree:true});
 
-    barcodeInput.addEventListener("keydown", function(e) {
-      if (e.key === "Enter") {
+    barcodeInput.addEventListener("keydown",e=>{
+      if(e.key==="Enter"){
         e.preventDefault();
-        setTimeout(async () => {
-          const code = sanitizeInput(this.value.trim());
-          if (!code) return updateStatus("Por favor, escanea un código válido.", "error");
-          const endpoint = mode==="recibido"
-            ? "/scanner/recibido"
-            : `/scanner/${mode}`;
-          try {
-            const r = await fetch("https://servidor-backend-paquetes.onrender.com"+endpoint, {
+        setTimeout(async ()=>{
+          const code=sanitizeInput(barcodeInput.value.trim());
+          if(!code) return updateStatus("Por favor, escanea un código válido.","error");
+          const endpoint= mode==="recibido"
+              ? "/scanner/recibido"
+              : `/scanner/${mode}`;
+          try{
+            const r=await fetch("https://servidor-backend-paquetes.onrender.com"+endpoint,{
               method: mode==="recibido"?"POST":"PUT",
-              headers:{ "Content-Type":"application/json" },
-              body: JSON.stringify({ paquete_id: code })
+              headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({paquete_id:code})
             });
-            if (r.ok) {
-              updateStatus("Operación correcta", "success");
-              showToast(`Paquete ${code} actualizado`, "success");
+            if(r.ok){
+              updateStatus("Operación correcta","success");
+              showToast(`Paquete ${code} actualizado`,"success");
               await loadAllPackages();
             } else {
-              const err = (await r.json()).error;
-              updateStatus(err, "error");
-              showToast(err, "error");
+              const err=(await r.json()).error;
+              updateStatus(err,"error");
+              showToast(err,"error");
             }
-          } catch {
-            updateStatus("Error de red.", "error");
-            showToast("Error de red", "error");
-          } finally {
-            barcodeInput.value = "";
+          }catch{
+            updateStatus("Error de red.","error");
+            showToast("Error de red","error");
+          }finally{
+            barcodeInput.value="";
           }
-        }, 150);
+        },150);
       }
     });
 
-    function updateStatus(msg, cls) {
-      const s = document.getElementById("status");
-      s.innerText = msg;
-      s.className = cls;
-      setTimeout(clearStatus, 5000);
-    }
-
-    function showToast(msg, type) {
-      toast.innerText = msg;
-      toast.className = `show ${type}`;
-      setTimeout(() => toast.className = "", 3000);
-    }
-
-    // --- Incidencias: modal ---
-    document.addEventListener("click", e => {
-      if (e.target.classList.contains("report-btn")) {
-        incPaquete.value = e.target.dataset.id;
-        incTipo.value = "";
-        incDesc.value = "";
-        incAdjuntos.value = "";
-        modal.style.display = "flex";
-      }
-    });
-    incCancel.addEventListener("click", () => modal.style.display = "none");
-    incSave.addEventListener("click", async () => {
-      const form = new FormData();
-      form.append("paquete_id", incPaquete.value);
-      form.append("tipo", incTipo.value);
-      form.append("descripcion", incDesc.value);
-      Array.from(incAdjuntos.files).forEach(f => form.append("adjuntos", f));
-      try {
-        const r = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias", {
-          method: "POST",
-          body: form
+    async function loadAllPackages(){
+      try{
+        const r=await fetch("https://servidor-backend-paquetes.onrender.com/scanner/all");
+        const arr=await r.json();
+        tableData=arr.map(p=>{
+          const h=p.historial;
+          return {
+            time: h[h.length-1].fecha,
+            id:   p.paquete_id,
+            prev: h.length>1? h[h.length-2].estado : "",
+            new:  p.estado_actual,
+            notes:""
+          };
         });
-        const json = await r.json();
-        if (r.ok) {
-          showToast("Incidencia creada correctamente", "success");
-          modal.style.display = "none";
-        } else {
-          showToast(json.error || "Error al crear incidencia", "error");
-        }
-      } catch {
-        showToast("Error de red", "error");
+        currentPage=1;
+        renderTable();
+      }catch(e){
+        console.error("No se pudo cargar historial:",e);
       }
-    });
+    }
 
-    // --- Filtros y tabla ---
-    searchInput.addEventListener("input", e => {
-      filterText = e.target.value.toLowerCase();
-      currentPage = 1;
-      renderTable();
+    function filteredData(){
+      return tableData.filter(r=>
+        (!filterText  || r.id.toLowerCase().includes(filterText)) &&
+        (!filterState || r.new===filterState)
+      );
+    }
+    function renderTable(){
+      let data=filteredData().sort((a,b)=>{
+        if(a[sortCol]<b[sortCol])return sortAsc?-1:1;
+        if(a[sortCol]>b[sortCol])return sortAsc?1:-1;
+        return 0;
+      });
+      counterEl.innerText=`Mostrando ${data.length} de ${tableData.length} paquetes`;
+      const start=(currentPage-1)*pageSize;
+      const page=data.slice(start,start+pageSize);
+      scanTbody.innerHTML="";
+      page.forEach(r=>{
+        const tr=document.createElement("tr");
+        ["time","id","prev","new","notes"].forEach(key=>{
+          const td=document.createElement("td");
+          td.innerText=r[key];
+          tr.appendChild(td);
+        });
+        const tdAcc=document.createElement("td");
+        const btn=document.createElement("button");
+        btn.innerText="Reportar incidencia";
+        btn.className="report-btn";
+        btn.setAttribute("data-id",r.id);
+        tdAcc.appendChild(btn);
+        tr.appendChild(tdAcc);
+        scanTbody.appendChild(tr);
+      });
+      pageInfo.innerText=`Página ${currentPage} de ${Math.max(1,Math.ceil(data.length/pageSize))}`;
+      prevPageBtn.disabled=currentPage===1;
+      nextPageBtn.disabled=currentPage*pageSize>=data.length;
+    }
+
+    searchInput.addEventListener("input",e=>{
+      filterText=e.target.value.toLowerCase();
+      currentPage=1; renderTable();
     });
-    stateFilter.addEventListener("change", e => {
-      filterState = e.target.value;
-      currentPage = 1;
-      renderTable();
+    stateFilter.addEventListener("change",e=>{
+      filterState=e.target.value;
+      currentPage=1; renderTable();
     });
-    document.querySelectorAll("#scanTable th").forEach(th => {
-      th.addEventListener("click", () => {
-        const col = th.dataset.col;
-        sortAsc = (sortCol === col) ? !sortAsc : true;
-        sortCol = col;
+    document.querySelectorAll("#scanTable th[data-col]").forEach(th=>{
+      th.addEventListener("click",()=>{
+        const c=th.dataset.col;
+        sortAsc=(sortCol===c)?!sortAsc:true;
+        sortCol=c;
         renderTable();
       });
     });
-    prevPageBtn.addEventListener("click", () => {
-      if (currentPage > 1) { currentPage--; renderTable(); }
+    prevPageBtn.addEventListener("click",()=>{
+      if(currentPage>1){currentPage--;renderTable();}
     });
-    nextPageBtn.addEventListener("click", () => {
-      const maxp = Math.ceil(filteredData().length / pageSize);
-      if (currentPage < maxp) { currentPage++; renderTable(); }
+    nextPageBtn.addEventListener("click",()=>{
+      const maxP=Math.ceil(filteredData().length/pageSize);
+      if(currentPage<maxP){currentPage++;renderTable();}
     });
 
-    function filteredData() {
-      return tableData.filter(r =>
-        (!filterText || r.id.toLowerCase().includes(filterText)) &&
-        (!filterState || r.new === filterState)
+    // — Crear incidencia desde historial —
+    document.addEventListener("click",e=>{
+      if(e.target.matches(".report-btn")){
+        incPaquete.value=e.target.dataset.id;
+        incTipo.value="";
+        incDesc.value="";
+        incAdjuntos.value="";
+        modal.style.display="flex";
+      }
+    });
+    incCancel.addEventListener("click",()=>modal.style.display="none");
+    incSave.addEventListener("click",async ()=>{
+      const form=new FormData();
+      form.append("paquete_id",incPaquete.value);
+      form.append("tipo",incTipo.value);
+      form.append("descripcion",incDesc.value);
+      Array.from(incAdjuntos.files).forEach(f=>form.append("adjuntos",f));
+      try{
+        const r=await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias",{
+          method:"POST", body:form
+        });
+        const j=await r.json();
+        if(r.ok){
+          showToast("Incidencia creada correctamente","success");
+          modal.style.display="none";
+        } else {
+          showToast(j.error||"Error al crear incidencia","error");
+        }
+      }catch{
+        showToast("Error de red","error");
+      }
+    });
+
+    // — Incidencias —
+    async function loadIncidencias(){
+      try{
+        const r=await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias");
+        incData=await r.json();
+        incPage=1;
+        renderIncTable();
+      }catch(e){
+        console.error("Error cargando incidencias:",e);
+      }
+    }
+
+    function filteredInc(){
+      return incData.filter(i=>
+        (!incFilterText || i._id.includes(incFilterText) || i.paquete_id.toLowerCase().includes(incFilterText))&&
+        (!incFilterTipo || i.tipo===incFilterTipo)&&
+        (!incFilterEstado || i.estado===incFilterEstado)
       );
     }
-
-    function renderTable() {
-      let data = filteredData().sort((a,b) => {
-        if (a[sortCol] < b[sortCol]) return sortAsc ? -1 : 1;
-        if (a[sortCol] > b[sortCol]) return sortAsc ? 1 : -1;
+    function renderIncTable(){
+      let data=filteredInc().sort((a,b)=>{
+        if(a[incSortCol]<b[incSortCol]) return incSortAsc?-1:1;
+        if(a[incSortCol]>b[incSortCol]) return incSortAsc?1:-1;
         return 0;
       });
-      // actualiza contador
-      counterEl.innerText = `Mostrando ${data.length} de ${tableData.length} paquetes`;
-
-      const start = (currentPage - 1) * pageSize;
-      const page = data.slice(start, start + pageSize);
-
-      tableBody.innerHTML = "";
-      page.forEach(r => {
-        const tr = document.createElement("tr");
-        ['time','id','prev','new','notes'].forEach(key => {
-          const td = document.createElement("td");
-          td.innerText = r[key];
+      const total=data.length;
+      const start=(incPage-1)*incPageSize;
+      const page=data.slice(start,start+incPageSize);
+      incTbody.innerHTML="";
+      page.forEach(i=>{
+        const tr=document.createElement("tr");
+        ["_id","paquete_id","tipo","estado","fecha_creacion"].forEach(key=>{
+          const td=document.createElement("td");
+          td.innerHTML =
+            key==="estado"
+              ? `<span style="color:${
+                  i.estado==="Abierta"?"red":
+                  i.estado==="En proceso"?"orange":"green"
+                }">${i.estado}</span>`
+              : i[key];
           tr.appendChild(td);
         });
-        // columna de acciones
-        const tdAct = document.createElement("td");
-        const btn = document.createElement("button");
-        btn.innerText = "Reportar incidencia";
-        btn.className = "report-btn";
-        btn.setAttribute("data-id", r.id);
-        tdAct.appendChild(btn);
-        tr.appendChild(tdAct);
-
-        tableBody.appendChild(tr);
+        const tdA=document.createElement("td");
+        tdA.innerHTML=`
+          <button class="view-inc" data-id="${i._id}">Ver</button>
+          <button class="edit-inc" data-id="${i._id}">Editar Estado</button>
+        `;
+        tr.appendChild(tdA);
+        incTbody.appendChild(tr);
       });
-
-      pageInfo.innerText = `Página ${currentPage} de ${Math.max(1,Math.ceil(data.length/pageSize))}`;
-      prevPageBtn.disabled = currentPage === 1;
-      nextPageBtn.disabled = currentPage >= Math.ceil(data.length/pageSize);
+      incPageInfo.innerText=`Página ${incPage} de ${Math.max(1,Math.ceil(total/incPageSize))}`;
+      incPrevBtn.disabled=incPage===1;
+      incNextBtn.disabled=incPage*incPageSize>=total;
     }
 
-    // Arranca cargando todo
+    incSearch.addEventListener("input",e=>{
+      incFilterText=e.target.value.toLowerCase();
+      incPage=1; renderIncTable();
+    });
+    incTipoFilter.addEventListener("change",e=>{
+      incFilterTipo=e.target.value;
+      incPage=1; renderIncTable();
+    });
+    incEstadoFilter.addEventListener("change",e=>{
+      incFilterEstado=e.target.value;
+      incPage=1; renderIncTable();
+    });
+    document.querySelectorAll("#incTable th[data-col]").forEach(th=>{
+      th.addEventListener("click",()=>{
+        const c=th.dataset.col;
+        incSortAsc=(incSortCol===c)?!incSortAsc:true;
+        incSortCol=c;
+        renderIncTable();
+      });
+    });
+    incPrevBtn.addEventListener("click",()=>{
+      if(incPage>1){incPage--;renderIncTable();}
+    });
+    incNextBtn.addEventListener("click",()=>{
+      const maxP=Math.ceil(filteredInc().length/incPageSize);
+      if(incPage<maxP){incPage++;renderIncTable();}
+    });
+
+    // Delegación para Ver / Editar incidencia
+    document.getElementById("view-incidencias").addEventListener("click",e=>{
+      if(e.target.matches(".view-inc")){
+        alert("Ver detalle de incidencia "+e.target.dataset.id);
+      }
+      if(e.target.matches(".edit-inc")){
+        alert("Editar estado de incidencia "+e.target.dataset.id);
+      }
+    });
+
+    // — Arranque —
     loadAllPackages();
+    showView("view-escaneo");
   </script>
 </body>
 </html>
