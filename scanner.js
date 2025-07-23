@@ -205,12 +205,20 @@ router.put("/en-almacen-mx", async (req, res) => {
   }
 });
 
-// Ruta para devolver todos los paquetes (historial completo)
+// Ruta para devolver todos los paquetes (historial completo) con conteo de incidencias
 router.get("/all", async (req, res) => {
   try {
-    const collection = global.db.collection("estados");
-    const paquetes   = await collection.find({}).toArray();
-    res.json(paquetes);
+    const estadosCol = global.db.collection("estados");
+    const incCol     = global.db.collection("Incidencias");
+
+    const paquetes = await estadosCol.find({}).toArray();
+    // Enriquecer cada paquete con el número de incidencias
+    const enriched = await Promise.all(paquetes.map(async p => {
+      const cnt = await incCol.countDocuments({ paquete_id: p.paquete_id });
+      return { ...p, incidencias_count: cnt };
+    }));
+
+    res.json(enriched);
   } catch (error) {
     console.error("Error al obtener todos los paquetes:", error);
     res.status(500).json({ error: "Error interno del servidor." });
@@ -221,7 +229,7 @@ router.get("/all", async (req, res) => {
 // RUTAS DE INCIDENCIAS
 // ----------------------------------------
 
-// Crear nueva incidencia (con adjuntos)
+// Crear nueva incidencia (con adjuntos) usando ID personalizado PAQUETE-IN
 router.post(
   "/incidencias",
   upload.array("adjuntos"),
@@ -232,8 +240,12 @@ router.post(
     }
     try {
       const collection = global.db.collection("Incidencias");
-      const fecha = new Date().toISOString();
+      const fecha      = new Date().toISOString();
+      // ID basado en código de paquete + sufijo "-IN"
+      const incId      = `${paquete_id}-IN`;
+
       const incidencia = {
+        _id: incId,
         paquete_id,
         tipo,
         descripcion,
@@ -242,8 +254,9 @@ router.post(
         historial: [{ estado: "Abierta", fecha }],
         adjuntos: (req.files || []).map(f => `/uploads/${f.filename}`)
       };
-      const result = await collection.insertOne(incidencia);
-      res.status(201).json({ message: "Incidencia creada.", id: result.insertedId });
+
+      await collection.insertOne(incidencia);
+      res.status(201).json({ message: "Incidencia creada.", id: incId });
     } catch (err) {
       console.error("Error al crear incidencia:", err);
       res.status(500).json({ error: "Error interno al crear incidencia." });
@@ -263,11 +276,11 @@ router.get("/incidencias", async (req, res) => {
   }
 });
 
-// Obtener una incidencia por ID
+// Obtener una incidencia por su nuevo ID
 router.get("/incidencias/:id", async (req, res) => {
   try {
     const collection = global.db.collection("Incidencias");
-    const incidencia = await collection.findOne({ _id: ObjectId(req.params.id) });
+    const incidencia = await collection.findOne({ _id: req.params.id });
     if (!incidencia) {
       return res.status(404).json({ error: "Incidencia no encontrada." });
     }
@@ -289,6 +302,7 @@ router.put("/incidencias/:id", async (req, res) => {
     const updates    = {};
     const pushOps    = [];
     const fecha      = new Date().toISOString();
+
     if (nuevo_estado) {
       updates.estado = nuevo_estado;
       pushOps.push({ estado: nuevo_estado, fecha });
@@ -296,8 +310,9 @@ router.put("/incidencias/:id", async (req, res) => {
     if (comentario) {
       pushOps.push({ comentario, fecha });
     }
+
     await collection.updateOne(
-      { _id: ObjectId(req.params.id) },
+      { _id: req.params.id },
       {
         $set: updates,
         $push: { historial: { $each: pushOps } }
