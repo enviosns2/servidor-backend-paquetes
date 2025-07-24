@@ -384,10 +384,7 @@
     }
     document.getElementById("nav-escaneo").onclick   = ()=>showView("view-escaneo");
     document.getElementById("nav-historial").onclick = ()=>showView("view-historial");
-    document.getElementById("nav-incidencias").onclick = ()=>{
-      showView("view-incidencias");
-      loadIncidencias();
-    };
+    document.getElementById("nav-incidencias").onclick = ()=>{ showView("view-incidencias"); loadIncidencias(); };
 
     // — Lógica de escaneo / paquetes —
     modeSelect.addEventListener("change",()=>{
@@ -431,7 +428,7 @@
             if(r.ok){
               updateStatus("Operación correcta","success");
               showToast(`Paquete ${code} actualizado`,"success");
-              await loadAllPackages();
+              await loadPage(1);
             } else {
               const err=(await r.json()).error;
               updateStatus(err,"error");
@@ -447,23 +444,25 @@
       }
     });
 
-    // — Carga historial completo —
-    async function loadAllPackages(){
+    // — Carga paginada —
+    async function loadPage(page=1){
       try {
-        const r=await fetch("https://servidor-backend-paquetes.onrender.com/scanner/all");
-        const arr=await r.json();
-        tableData = arr.map(p=>{
+        const url = `https://servidor-backend-paquetes.onrender.com/scanner/all`
+                  + `?page=${page}&pageSize=${pageSize}`;
+        const r = await fetch(url);
+        const { totalItems: total, page: current, pageSize: ps, items } = await r.json();
+        totalItems  = total;
+        currentPage = current;
+        tableData = items.map(p=>{
           const h=p.historial;
           return {
             time: formatDateTime(h[h.length-1].fecha),
             id:   p.paquete_id,
             new:  p.estado_actual,
-            prev: h.length>1? h[h.length-2].estado:"",
+            prev: h.length>1? h[h.length-2].estado : "",
             inc:  p.incidencias_count
           };
         });
-        totalItems = tableData.length;
-        currentPage = 1;
         renderTable();
         renderMiniTable();
       } catch(e){
@@ -504,12 +503,12 @@
     // — Historial completo —
     function filteredData(){
       return tableData.filter(r=>
-        (!filterText  || r.id.toLowerCase().includes(filterText)) &&
-        (!filterState || r.new===filterState)
+        (!filterText|| r.id.toLowerCase().includes(filterText)) &&
+        (!filterState|| r.new===filterState)
       );
     }
     function renderTable(){
-      const data=filteredData().sort((a,b)=>{
+      const data = filteredData().sort((a,b)=>{
         if(a[sortCol]<b[sortCol]) return sortAsc?-1:1;
         if(a[sortCol]>b[sortCol]) return sortAsc?1:-1;
         return 0;
@@ -541,20 +540,18 @@
         scanTbody.appendChild(tr);
       });
 
-      const totalPages=Math.ceil(totalItems/pageSize)||1;
+      const totalPages=Math.max(1,Math.ceil(totalItems/pageSize));
       pageInfo.innerText=`Página ${currentPage} de ${totalPages}`;
       prevPageBtn.disabled=currentPage===1;
       nextPageBtn.disabled=currentPage===totalPages;
     }
 
-    // — Controles de filtro y paginación —
+    // — Filtros & paginación —
     searchInput.addEventListener("input",e=>{
-      filterText=e.target.value.toLowerCase();
-      currentPage=1; renderTable();
+      filterText=e.target.value.toLowerCase(); currentPage=1; renderTable();
     });
     stateFilter.addEventListener("change",e=>{
-      filterState=e.target.value;
-      currentPage=1; renderTable();
+      filterState=e.target.value; currentPage=1; renderTable();
     });
     document.querySelectorAll("#scanTable th[data-col]").forEach(th=>{
       th.addEventListener("click",()=>{
@@ -565,14 +562,14 @@
       });
     });
     prevPageBtn.addEventListener("click",()=>{
-      if(currentPage>1){ currentPage--; renderTable(); }
+      if(currentPage>1) loadPage(currentPage-1);
     });
     nextPageBtn.addEventListener("click",()=>{
       const totalPages=Math.ceil(totalItems/pageSize);
-      if(currentPage<totalPages){ currentPage++; renderTable(); }
+      if(currentPage<totalPages) loadPage(currentPage+1);
     });
 
-    // — Redirecciones mini + completo a incidencias o modal —
+    // — Redirecciones —
     document.querySelector("#miniTable").addEventListener("click",e=>{
       const id=e.target.dataset.id; if(!id) return;
       if(e.target.matches(".inc-count")||e.target.matches(".mini-view-inc")){
@@ -615,7 +612,7 @@
         if(r.ok){
           showToast("Incidencia creada correctamente","success");
           modal.style.display="none";
-          await loadAllPackages();
+          await loadPage(1);
         } else {
           showToast(j.error||"Error al crear incidencia","error");
         }
@@ -631,16 +628,13 @@
     const incPageInfoEl = document.getElementById("incPageInfo");
 
     document.getElementById("incSearch").addEventListener("input",e=>{
-      incFilterText=e.target.value.toLowerCase();
-      incPage=1; renderIncTable();
+      incFilterText=e.target.value.toLowerCase(); incPage=1; renderIncTable();
     });
     document.getElementById("incTipoFilter").addEventListener("change",e=>{
-      incFilterTipo=e.target.value;
-      incPage=1; renderIncTable();
+      incFilterTipo=e.target.value; incPage=1; renderIncTable();
     });
     document.getElementById("incEstadoFilter").addEventListener("change",e=>{
-      incFilterEstado=e.target.value;
-      incPage=1; renderIncTable();
+      incFilterEstado=e.target.value; incPage=1; renderIncTable();
     });
 
     async function loadIncidencias(){
@@ -730,7 +724,7 @@
     });
 
     // — Arranque —
-    loadAllPackages();
+    loadPage(1);
     showView("view-escaneo");
   </script>
 </body>
