@@ -199,24 +199,23 @@ router.get("/all", async (req, res) => {
     const estadosCol = global.db.collection("estados");
     const incCol     = global.db.collection("Incidencias");
 
-    const page      = Math.max(1, parseInt(req.query.page, 10) || 1);
+    // Parámetros
+    const page      = Math.max(1, parseInt(req.query.page,     10) || 1);
     const pageSize  = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
     const sortField = req.query.sortField === "id" ? "paquete_id" : "lastFecha";
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const match     = {};
+    if (req.query.state) match.estado_actual = req.query.state;
 
-    const match = {};
-    if (req.query.state) {
-      match.estado_actual = req.query.state;
-    }
-
+    // Nuevo pipeline
     const pipeline = [
       { $match: match },
       { $project: {
-          _id: 1,
           paquete_id:     1,
           estado_actual:  1,
           historial:      1,
-          lastFecha:      { $arrayElemAt: ["$historial.fecha", -1] }
+          // extrae el último elemento de historial.fecha
+          lastFecha:      { $last: "$historial.fecha" }
       }},
       { $sort: { [sortField]: sortOrder } },
       { $skip: (page - 1) * pageSize },
@@ -231,7 +230,9 @@ router.get("/all", async (req, res) => {
     const items = await Promise.all(docs.map(async doc => {
       const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
       return {
-        ...doc,
+        paquete_id:       doc.paquete_id,
+        estado_actual:    doc.estado_actual,
+        historial:        doc.historial,
         incidencias_count: cnt
       };
     }));
