@@ -187,10 +187,13 @@ router.put("/en-almacen-mx", async (req, res) => {
 // ----------------------------------------
 /**
  * GET /scanner/all
- * Query params:
+ * Query params opcionales:
  *   - page       (número de página, default 1)
  *   - pageSize   (tamaño de página, default 10)
  *   - state      (filtro por estado_actual)
+ *
+ * Orden fijo: siempre por la última fecha de historial (descendente),
+ *            luego aplica skip/limit para paginar correctamente.
  */
 router.get("/all", async (req, res) => {
   try {
@@ -198,38 +201,61 @@ router.get("/all", async (req, res) => {
     const incCol     = global.db.collection("Incidencias");
 
     // Parámetros de paginación
-    const page     = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const page     = Math.max(1, parseInt(req.query.page,     10) || 1);
     const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
 
-    // Filtro opcional
+    // Filtro opcional por estado_actual
     const match = {};
     if (req.query.state) {
       match.estado_actual = req.query.state;
     }
 
-    // Conteo total
-    const totalItems = await estadosCol.countDocuments(match);
+    // Agregación con facet para contar total y paginar
+    const pipeline = [
+      { $match: match },
+      // Calcular lastFecha como el último elemento del array de fechas
+      { $addFields: {
+          lastFecha: { $arrayElemAt: ["$historial.fecha", -1] }
+        }
+      },
+      // Ordenar siempre descendente por lastFecha
+      { $sort: { lastFecha: -1 } },
+      // Facet: separa conteo total y datos paginados
+      { $facet: {
+          metadata: [
+            { $count: "totalItems" }
+          ],
+          data: [
+            { $skip: (page - 1) * pageSize },
+            { $limit: pageSize }
+          ]
+      }},
+      // Desenrollar metadata y proyectar salida final
+      { $unwind: "$metadata" },
+      { $project: {
+          totalItems: "$metadata.totalItems",
+          items: "$data"
+      }}
+    ];
 
-    // Encontrar + ordenar por fecha más reciente (historial.fecha desc) + paginar
-    const docs = await estadosCol
-      .find(match)
-      .sort({ "historial.fecha": -1 })
-      .skip((page - 1) * pageSize)
-      .limit(pageSize)
-      .toArray();
+    const agg = await estadosCol.aggregate(pipeline).toArray();
+    // Si no hay nada, devolvemos vacío
+    if (agg.length === 0) {
+      return res.json({ totalItems: 0, page, pageSize, items: [] });
+    }
+
+    const { totalItems, items: docs } = agg[0];
 
     // Enriquecer con conteo de incidencias
-    const items = await Promise.all(
-      docs.map(async doc => {
-        const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
-        return {
-          paquete_id:        doc.paquete_id,
-          estado_actual:     doc.estado_actual,
-          historial:         doc.historial,
-          incidencias_count: cnt
-        };
-      })
-    );
+    const items = await Promise.all(docs.map(async doc => {
+      const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
+      return {
+        paquete_id:       doc.paquete_id,
+        estado_actual:    doc.estado_actual,
+        historial:        doc.historial,
+        incidencias_count: cnt
+      };
+    }));
 
     res.json({ totalItems, page, pageSize, items });
   } catch (err) {
@@ -241,6 +267,7 @@ router.get("/all", async (req, res) => {
 // ----------------------------------------
 // RUTAS DE INCIDENCIAS
 // ----------------------------------------
+
 router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
   const { paquete_id, tipo, descripcion } = req.body;
   if (!paquete_id || !tipo || !descripcion) {
