@@ -421,8 +421,8 @@
           const code = sanitizeInput(barcodeInput.value.trim());
           if(!code) return updateStatus("Por favor, escanea un código válido.","error");
           const endpoint = mode === "recibido"
-            ? "/scanner/recibido"
-            : `/scanner/${mode}`;
+            ? "/recibido"
+            : `/${mode}`;
           try {
             const res = await fetch(
               `https://servidor-backend-paquetes.onrender.com/scanner${endpoint}`,
@@ -458,8 +458,7 @@
           `https://servidor-backend-paquetes.onrender.com/scanner/all?page=${page}&pageSize=${pageSize}`
         );
         const { totalItems: total, page: current, items } = await resp.json();
-        totalItems = total;
-        currentPage = current;
+        totalItems = total; currentPage = current;
         tableData = items.map(p=>{
           const h = p.historial;
           return {
@@ -478,7 +477,7 @@
       }
     }
 
-    // — Mini‑historial (siempre en orden original) —
+    // — Mini‑historial —
     function renderMiniTable(){
       miniTbody.innerHTML = "";
       tableData.slice(0,5).forEach(r=>{
@@ -509,12 +508,9 @@
 
     // — Historial completo —
     function renderTable(){
-      // Rango visible
       const start = (currentPage-1)*pageSize + 1;
       const end   = Math.min(currentPage*pageSize, totalItems);
       counterEl.innerText = `Mostrando ${start}–${end} de ${totalItems} paquetes`;
-
-      // Pinta rows
       scanTbody.innerHTML = "";
       tableData.forEach(r=>{
         const tr = document.createElement("tr");
@@ -536,12 +532,10 @@
         tr.appendChild(tdA);
         scanTbody.appendChild(tr);
       });
-
-      // Botones página
       const totalPages = Math.max(1, Math.ceil(totalItems/pageSize));
-      pageInfo.innerText      = `Página ${currentPage} de ${totalPages}`;
-      prevPageBtn.disabled    = currentPage === 1;
-      nextPageBtn.disabled    = currentPage === totalPages;
+      pageInfo.innerText   = `Página ${currentPage} de ${totalPages}`;
+      prevPageBtn.disabled = currentPage === 1;
+      nextPageBtn.disabled = currentPage === totalPages;
     }
 
     // — Sorting solo en vista extendida —
@@ -550,7 +544,6 @@
         const c = th.dataset.col;
         sortAsc = (sortCol === c) ? !sortAsc : true;
         sortCol = c;
-        // comparator
         tableData.sort((a,b)=>{
           let av = (c === "time") ? a.timeISO : a[c];
           let bv = (c === "time") ? b.timeISO : b[c];
@@ -562,29 +555,23 @@
       });
     });
 
-    // — Filtros (cliente) y paginación con recarga —
-    searchInput .addEventListener("input", e=>{ filterText = e.target.value.toLowerCase(); renderTable(); });
-    stateFilter .addEventListener("change", e=>{ filterState = e.target.value; renderTable(); });
-    prevPageBtn .addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
-    nextPageBtn .addEventListener("click", ()=>{
-      const totalPages = Math.ceil(totalItems/pageSize);
-      if(currentPage<totalPages) loadPage(currentPage+1);
-    });
+    // — Filtros y paginación —
+    searchInput.addEventListener("input", e=>{ filterText = e.target.value.toLowerCase(); renderTable(); });
+    stateFilter.addEventListener("change", e=>{ filterState = e.target.value; renderTable(); });
+    prevPageBtn.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
+    nextPageBtn.addEventListener("click", ()=>{ const tp = Math.ceil(totalItems/pageSize); if(currentPage<tp) loadPage(currentPage+1); });
 
-    // — Mini y Extendido → incidencia o modal —
-    function attachRowClicks(tableSelector){
-      document.querySelector(tableSelector).addEventListener("click", e=>{
+    // — Clics en filas —
+    function attachRowClicks(sel){
+      document.querySelector(sel).addEventListener("click", e=>{
         const id = e.target.dataset.id;
         if(!id) return;
-        if(e.target.matches(".inc-count") ||
-           e.target.matches(".mini-view-inc") ||
-           e.target.matches(".hist-view-inc")){
+        if(e.target.matches(".inc-count") || e.target.matches(".mini-view-inc") || e.target.matches(".hist-view-inc")){
           showView("view-incidencias");
           document.getElementById("incSearch").value = id;
           incFilterText = id.toLowerCase();
           loadIncidencias();
-        } else if(e.target.matches(".mini-report-inc") ||
-                  e.target.matches(".hist-report-inc")){
+        } else if(e.target.matches(".mini-report-inc") || e.target.matches(".hist-report-inc")){
           incPaquete.value = id;
           modal.style.display = "flex";
         }
@@ -593,19 +580,16 @@
     attachRowClicks("#miniTable");
     attachRowClicks("#scanTable");
 
-    // — Modal: reportar incidencia —
+    // — Modal incidencia —
     incCancel.addEventListener("click", ()=> modal.style.display = "none");
-    incSave  .addEventListener("click", async ()=>{
+    incSave.addEventListener("click", async ()=>{
       const form = new FormData();
       form.append("paquete_id", incPaquete.value);
-      form.append("tipo",       incTipo.value);
-      form.append("descripcion",incDesc.value);
+      form.append("tipo", incTipo.value);
+      form.append("descripcion", incDesc.value);
       Array.from(incAdjuntos.files).forEach(f=> form.append("adjuntos", f));
       try {
-        const res = await fetch(
-          "https://servidor-backend-paquetes.onrender.com/scanner/incidencias",
-          { method: "POST", body: form }
-        );
+        const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias", { method:"POST", body: form });
         const j = await res.json();
         if(res.ok){
           showToast("Incidencia creada correctamente","success");
@@ -619,15 +603,15 @@
       }
     });
 
-    // — Incidencias: lista, filtros, paginación, ver/editar —
+    // — Incidencias —
     const incTbody      = document.querySelector("#incTable tbody");
     const incPrevBtn    = document.getElementById("incPrev");
     const incNextBtn    = document.getElementById("incNext");
     const incPageInfoEl = document.getElementById("incPageInfo");
 
-    document.getElementById("incSearch")     .addEventListener("input", e=>{ incFilterText   = e.target.value.toLowerCase(); incPage = 1; renderIncTable(); });
-    document.getElementById("incTipoFilter") .addEventListener("change", e=>{ incFilterTipo   = e.target.value; incPage = 1; renderIncTable(); });
-    document.getElementById("incEstadoFilter").addEventListener("change", e=>{ incFilterEstado = e.target.value; incPage = 1; renderIncTable(); });
+    document.getElementById("incSearch").addEventListener("input", e=>{ incFilterText = e.target.value.toLowerCase(); incPage=1; renderIncTable(); });
+    document.getElementById("incTipoFilter").addEventListener("change", e=>{ incFilterTipo = e.target.value; incPage=1; renderIncTable(); });
+    document.getElementById("incEstadoFilter").addEventListener("change", e=>{ incFilterEstado = e.target.value; incPage=1; renderIncTable(); });
 
     async function loadIncidencias(){
       try {
@@ -642,9 +626,9 @@
 
     function filteredInc(){
       return incData.filter(i=>
-        (!incFilterText   || i._id.includes(incFilterText)   || i.paquete_id.toLowerCase().includes(incFilterText)) &&
-        (!incFilterTipo   || i.tipo === incFilterTipo) &&
-        (!incFilterEstado || i.estado=== incFilterEstado)
+        (!incFilterText || i._id.includes(incFilterText) || i.paquete_id.toLowerCase().includes(incFilterText)) &&
+        (!incFilterTipo || i.tipo===incFilterTipo) &&
+        (!incFilterEstado || i.estado===incFilterEstado)
       );
     }
 
@@ -687,24 +671,21 @@
         incTbody.appendChild(tr);
       });
 
-      const maxP = Math.max(1, Math.ceil(filteredInc().length / incPageSize));
-      incPrevBtn.disabled = incPage === 1;
-      incNextBtn.disabled = incPage === maxP;
+      const maxP = Math.max(1, Math.ceil(filteredInc().length/incPageSize));
+      incPrevBtn.disabled = incPage===1;
+      incNextBtn.disabled = incPage===maxP;
     }
 
     document.querySelectorAll("#incTable th[data-col]").forEach(th=>{
       th.addEventListener("click", ()=>{
         const c = th.dataset.col;
-        incSortAsc = (incSortCol === c) ? !incSortAsc : true;
+        incSortAsc = (incSortCol===c)?!incSortAsc:true;
         incSortCol = c;
         renderIncTable();
       });
     });
-    incPrevBtn.addEventListener("click", ()=>{ if(incPage>1){ incPage--; renderIncTable(); }}); 
-    incNextBtn.addEventListener("click", ()=>{ 
-      const maxP = Math.ceil(filteredInc().length / incPageSize);
-      if(incPage<maxP){ incPage++; renderIncTable(); }
-    });
+    incPrevBtn.addEventListener("click", ()=>{ if(incPage>1){ incPage--; renderIncTable(); }});
+    incNextBtn.addEventListener("click", ()=>{ const mp=Math.ceil(filteredInc().length/incPageSize); if(incPage<mp){ incPage++; renderIncTable(); }});
 
     document.getElementById("view-incidencias").addEventListener("click", e=>{
       if(e.target.matches(".view-inc")){
