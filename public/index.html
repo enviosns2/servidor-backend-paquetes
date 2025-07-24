@@ -211,7 +211,7 @@
         </div>
       </section>
 
-      <!-- HISTORIAL DE PAQUETES COMPLETO -->
+      <!-- HISTORIAL COMPLETO -->
       <section id="view-historial" style="display:none;">
         <div id="counter">Mostrando 0 de 0 paquetes</div>
         <div id="tableControls">
@@ -322,7 +322,7 @@
   <script>
     console.log("Script cargado correctamente");
 
-    // — Variables y estado —
+    // — Estado global —
     let mode="recibido";
     let tableData=[], totalItems=0, sortCol="time", sortAsc=false;
     let filterText="", filterState="";
@@ -332,7 +332,7 @@
     let incFilterText="", incFilterTipo="", incFilterEstado="";
     let incPage=1, incPageSize=10;
 
-    // — Elementos —
+    // — Elementos DOM —
     const counterEl    = document.getElementById("counter");
     const scanTbody    = document.querySelector("#scanTable tbody");
     const miniTbody    = document.querySelector("#miniTable tbody");
@@ -355,17 +355,14 @@
 
     // — Utilidades —
     function clearStatus(){
-      statusEl.innerText="";
-      statusEl.className="";
+      statusEl.innerText=""; statusEl.className="";
     }
     function updateStatus(msg,cls){
-      statusEl.innerText=msg;
-      statusEl.className=cls;
+      statusEl.innerText=msg; statusEl.className=cls;
       setTimeout(clearStatus,5000);
     }
     function showToast(msg,type){
-      toast.innerText=msg;
-      toast.className=`show ${type}`;
+      toast.innerText=msg; toast.className=`show ${type}`;
       setTimeout(()=>toast.className="",3000);
     }
     function sanitizeInput(v){
@@ -378,21 +375,22 @@
            + `${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    // — Vistas —
+    // — Cambiar vista —
     function showView(v){
       ["view-escaneo","view-historial","view-incidencias"]
-        .forEach(id=>document.getElementById(id)
-          .style.display = id===v ? "block" : "none");
+        .forEach(id=>
+          document.getElementById(id).style.display = id===v ? "block" : "none"
+        );
     }
     document.getElementById("nav-escaneo").onclick   = ()=>showView("view-escaneo");
     document.getElementById("nav-historial").onclick = ()=>showView("view-historial");
-    document.getElementById("nav-incidencias").onclick = () => {
+    document.getElementById("nav-incidencias").onclick = ()=>{
       showView("view-incidencias");
       loadIncidencias();
     };
 
-    // — Scanner / Paquetes —
-    modeSelect.addEventListener("change", ()=>{
+    // — Lógica de escaneo / paquetes —
+    modeSelect.addEventListener("change",()=>{
       mode = modeSelect.value;
       document.getElementById("mode").innerHTML =
         `Modo actual: <strong>${modeSelect.selectedOptions[0].text}</strong>`;
@@ -400,7 +398,8 @@
     });
     ["beforeinput","input","paste","keyup"].forEach(evt=>{
       barcodeInput.addEventListener(evt,
-        ()=>barcodeInput.value=sanitizeInput(barcodeInput.value));
+        ()=>barcodeInput.value=sanitizeInput(barcodeInput.value)
+      );
     });
     setInterval(()=>{
       const v=sanitizeInput(barcodeInput.value);
@@ -411,7 +410,7 @@
       if(barcodeInput.value!==v) barcodeInput.value=v;
     }).observe(barcodeInput,{childList:true,characterData:true,subtree:true});
 
-    barcodeInput.addEventListener("keydown", e=>{
+    barcodeInput.addEventListener("keydown",e=>{
       if(e.key==="Enter"){
         e.preventDefault();
         setTimeout(async ()=>{
@@ -451,15 +450,15 @@
     // — Carga historial completo —
     async function loadAllPackages(){
       try {
-        const r = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/all");
-        const arr = await r.json();
+        const r=await fetch("https://servidor-backend-paquetes.onrender.com/scanner/all");
+        const arr=await r.json();
         tableData = arr.map(p=>{
           const h=p.historial;
           return {
             time: formatDateTime(h[h.length-1].fecha),
             id:   p.paquete_id,
             new:  p.estado_actual,
-            prev: h.length>1? h[h.length-2].estado : "",
+            prev: h.length>1? h[h.length-2].estado:"",
             inc:  p.incidencias_count
           };
         });
@@ -468,15 +467,14 @@
         renderTable();
         renderMiniTable();
       } catch(e){
-        console.error("No se pudo cargar historial:", e);
+        console.error("No se pudo cargar historial:",e);
       }
     }
 
     // — Mini‑historial —
     function renderMiniTable(){
       miniTbody.innerHTML="";
-      const mini = [...tableData].slice(0,5);
-      mini.forEach(r=>{
+      tableData.slice(0,5).forEach(r=>{
         const tr=document.createElement("tr");
         ["time","id","new","prev"].forEach(k=>{
           const td=document.createElement("td");
@@ -484,7 +482,7 @@
           tr.appendChild(td);
         });
         const tdInc=document.createElement("td");
-        tdInc.innerHTML=r.inc>0
+        tdInc.innerHTML = r.inc>0
           ? `<button class="inc-count" data-id="${r.id}">${r.inc}</button>`
           : "0";
         tr.appendChild(tdInc);
@@ -511,18 +509,17 @@
       );
     }
     function renderTable(){
-      const data = filteredData().sort((a,b)=>{
+      const data=filteredData().sort((a,b)=>{
         if(a[sortCol]<b[sortCol]) return sortAsc?-1:1;
         if(a[sortCol]>b[sortCol]) return sortAsc?1:-1;
         return 0;
       });
-      const total = totalItems;
-      const start = (currentPage-1)*pageSize+1;
-      const end   = Math.min(currentPage*pageSize, total);
-      counterEl.innerText = `Mostrando ${start}–${end} de ${total} paquetes`;
+      const start=(currentPage-1)*pageSize+1;
+      const end=Math.min(currentPage*pageSize, totalItems);
+      counterEl.innerText = `Mostrando ${start}–${end} de ${totalItems} paquetes`;
 
       scanTbody.innerHTML="";
-      data.slice(start-1, end).forEach(r=>{
+      data.slice(start-1,end).forEach(r=>{
         const tr=document.createElement("tr");
         ["time","id","new","prev"].forEach(k=>{
           const td=document.createElement("td");
@@ -530,7 +527,7 @@
           tr.appendChild(td);
         });
         const tdInc=document.createElement("td");
-        tdInc.innerHTML=r.inc>0
+        tdInc.innerHTML= r.inc>0
           ? `<button class="hist-inc-count" data-id="${r.id}">${r.inc}</button>`
           : "0";
         tr.appendChild(tdInc);
@@ -544,13 +541,13 @@
         scanTbody.appendChild(tr);
       });
 
-      const totalPages = Math.ceil(total/pageSize) || 1;
-      pageInfo.innerText = `Página ${currentPage} de ${totalPages}`;
-      prevPageBtn.disabled = currentPage===1;
-      nextPageBtn.disabled = currentPage===totalPages;
+      const totalPages=Math.ceil(totalItems/pageSize)||1;
+      pageInfo.innerText=`Página ${currentPage} de ${totalPages}`;
+      prevPageBtn.disabled=currentPage===1;
+      nextPageBtn.disabled=currentPage===totalPages;
     }
 
-    // — Controles —
+    // — Controles de filtro y paginación —
     searchInput.addEventListener("input",e=>{
       filterText=e.target.value.toLowerCase();
       currentPage=1; renderTable();
@@ -571,12 +568,11 @@
       if(currentPage>1){ currentPage--; renderTable(); }
     });
     nextPageBtn.addEventListener("click",()=>{
-      const total = totalItems;
-      const totalPages = Math.ceil(total/pageSize);
+      const totalPages=Math.ceil(totalItems/pageSize);
       if(currentPage<totalPages){ currentPage++; renderTable(); }
     });
 
-    // — Redirecciones mini + completo —
+    // — Redirecciones mini + completo a incidencias o modal —
     document.querySelector("#miniTable").addEventListener("click",e=>{
       const id=e.target.dataset.id; if(!id) return;
       if(e.target.matches(".inc-count")||e.target.matches(".mini-view-inc")){
@@ -602,7 +598,7 @@
       }
     });
 
-    // — Crear / Guardar incidencia (modal) —
+    // — Modal: reportar incidencia —
     incCancel.addEventListener("click",()=>modal.style.display="none");
     incSave.addEventListener("click",async ()=>{
       const form=new FormData();
@@ -610,7 +606,7 @@
       form.append("tipo",incTipo.value);
       form.append("descripcion",incDesc.value);
       Array.from(incAdjuntos.files).forEach(f=>form.append("adjuntos",f));
-      try{
+      try {
         const r=await fetch(
           "https://servidor-backend-paquetes.onrender.com/scanner/incidencias",
           { method:"POST", body: form }
@@ -623,16 +619,17 @@
         } else {
           showToast(j.error||"Error al crear incidencia","error");
         }
-      }catch{
+      } catch {
         showToast("Error de red","error");
       }
     });
 
-    // — Incidencias completos (filtros, orden, paginación, ver/editar) —
-    const incTbody = document.querySelector("#incTable tbody");
-    const incPrev  = document.getElementById("incPrev");
-    const incNext  = document.getElementById("incNext");
-    const incPageInfo = document.getElementById("incPageInfo");
+    // — Incidencias: lista, filtros, paginación, ver/editar —
+    const incTbody      = document.querySelector("#incTable tbody");
+    const incPrevBtn    = document.getElementById("incPrev");
+    const incNextBtn    = document.getElementById("incNext");
+    const incPageInfoEl = document.getElementById("incPageInfo");
+
     document.getElementById("incSearch").addEventListener("input",e=>{
       incFilterText=e.target.value.toLowerCase();
       incPage=1; renderIncTable();
@@ -645,47 +642,50 @@
       incFilterEstado=e.target.value;
       incPage=1; renderIncTable();
     });
+
     async function loadIncidencias(){
       try {
         const r=await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias");
         incData=await r.json();
         incPage=1; renderIncTable();
-      }catch(e){
+      } catch(e){
         console.error("Error cargando incidencias:",e);
       }
     }
+
     function filteredInc(){
       return incData.filter(i=>
         (!incFilterText || i._id.includes(incFilterText) || i.paquete_id.toLowerCase().includes(incFilterText)) &&
-        (!incFilterTipo || i.tipo===incFilterTipo) &&
-        (!incFilterEstado || i.estado===incFilterEstado)
+        (!incFilterTipo  || i.tipo===incFilterTipo) &&
+        (!incFilterEstado|| i.estado===incFilterEstado)
       );
     }
+
     function renderIncTable(){
-      let data=filteredInc().sort((a,b)=>{
+      const all=filteredInc().sort((a,b)=>{
         if(a[incSortCol]<b[incSortCol]) return incSortAsc?-1:1;
         if(a[incSortCol]>b[incSortCol]) return incSortAsc?1:-1;
         return 0;
       });
-      const total=data.length;
       const start=(incPage-1)*incPageSize+1;
-      const end=Math.min(incPage*incPageSize, total);
-      document.getElementById("incPageInfo").innerText =
-        `Mostrando ${start}–${end} de ${total} incidencias`;
+      const end=Math.min(incPage*incPageSize, all.length);
+      incPageInfoEl.innerText = `Mostrando ${start}–${end} de ${all.length} incidencias`;
 
       incTbody.innerHTML="";
-      data.slice(start-1, end).forEach(i=>{
+      all.slice(start-1,end).forEach(i=>{
         const tr=document.createElement("tr");
-        ["_id","paquete_id","tipo","estado"].forEach(key=>{
+        ["_id","paquete_id","tipo"].forEach(k=>{
           const td=document.createElement("td");
-          if(key==="estado"){
-            td.innerHTML=`<span style="color:${
-              i.estado==="Abierta"?"red":
-              i.estado==="En proceso"?"orange":"green"
-            }">${i.estado}</span>`;
-          } else td.innerText=i[key];
+          td.innerText=i[k];
           tr.appendChild(td);
         });
+        const tdEst=document.createElement("td");
+        tdEst.innerHTML=`<span style="color:${
+          i.estado==="Abierta"?"red":
+          i.estado==="En proceso"?"orange":"green"
+        }">${i.estado}</span>`;
+        tr.appendChild(tdEst);
+
         const tdDate=document.createElement("td");
         tdDate.innerText=formatDateTime(i.fecha_creacion);
         tr.appendChild(tdDate);
@@ -699,9 +699,11 @@
         incTbody.appendChild(tr);
       });
 
-      incPrev.disabled = incPage===1;
-      incNext.disabled = incPage*incPageSize>=total;
+      const maxP=Math.ceil(all.length/incPageSize)||1;
+      incPrevBtn.disabled=incPage===1;
+      incNextBtn.disabled=incPage===maxP;
     }
+
     document.querySelectorAll("#incTable th[data-col]").forEach(th=>{
       th.addEventListener("click",()=>{
         const c=th.dataset.col;
@@ -710,14 +712,14 @@
         renderIncTable();
       });
     });
-    incPrev.addEventListener("click",()=>{
+    incPrevBtn.addEventListener("click",()=>{
       if(incPage>1){ incPage--; renderIncTable(); }
     });
-    incNext.addEventListener("click",()=>{
-      const total=filteredInc().length;
-      const maxP=Math.ceil(total/incPageSize);
+    incNextBtn.addEventListener("click",()=>{
+      const maxP=Math.ceil(filteredInc().length/incPageSize);
       if(incPage<maxP){ incPage++; renderIncTable(); }
     });
+
     document.getElementById("view-incidencias").addEventListener("click",e=>{
       if(e.target.matches(".view-inc")){
         alert("Ver detalle de incidencia "+e.target.dataset.id);
