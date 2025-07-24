@@ -38,7 +38,7 @@ router.post("/recibido", async (req, res) => {
     if (await col.findOne({ paquete_id })) {
       return res.status(400).json({ error: "El paquete ya existe con estado inicial." });
     }
-    // <-- guardamos fecha como Date()
+    // Guardamos fecha como Date()
     const fecha = new Date();
     const nuevo = {
       paquete_id,
@@ -184,18 +184,8 @@ router.put("/en-almacen-mx", async (req, res) => {
 });
 
 // ----------------------------------------
-// RUTA MEJORADA PARA HISTORIAL CON PAGINACIÓN Y ORDEN GLOBAL
+// GET /scanner/all - HISTORIAL CON ORDEN FIJO Y PAGINACIÓN
 // ----------------------------------------
-/**
- * GET /scanner/all
- * Query params opcionales:
- *   - page       (número de página, default 1)
- *   - pageSize   (tamaño de página, default 10)
- *   - state      (filtro por estado_actual)
- *
- * Orden fijo: siempre por la fecha máxima de historial (descendente),
- *            luego aplica skip/limit para paginar correctamente.
- */
 router.get("/all", async (req, res) => {
   try {
     const estadosCol = global.db.collection("estados");
@@ -211,32 +201,30 @@ router.get("/all", async (req, res) => {
       match.estado_actual = req.query.state;
     }
 
-    // Agregación: $addFields con $max de fechas (Date), luego sort, skip, limit
+    // Pipeline:
+    // 1) $match
+    // 2) $addFields → lastFecha = máximo de todas las fechas en historial
+    // 3) $sort por lastFecha DESC
+    // 4) $skip + $limit para paginar
+    // 5) $project para conservar solo los campos necesarios
     const pipeline = [
       { $match: match },
-
-      // fecha real de tipo Date
       { $addFields: {
           lastFecha: { $max: "$historial.fecha" }
         }
       },
-
-      // orden descendente
       { $sort: { lastFecha: -1 } },
-
-      // saltar y limitar
       { $skip: (page - 1) * pageSize },
       { $limit: pageSize },
-
-      // proyectar lo necesario
       { $project: {
-          paquete_id:        1,
-          estado_actual:     1,
-          historial:         1
-      }}
+          paquete_id:     1,
+          estado_actual:  1,
+          historial:      1
+        }
+      }
     ];
 
-    // Ejecutar agregación y contar total de match
+    // Ejecutar agregación y conteo total
     const [docs, totalItems] = await Promise.all([
       estadosCol.aggregate(pipeline).toArray(),
       estadosCol.countDocuments(match)
@@ -246,15 +234,14 @@ router.get("/all", async (req, res) => {
     const items = await Promise.all(docs.map(async doc => {
       const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
       return {
-        paquete_id:        doc.paquete_id,
-        estado_actual:     doc.estado_actual,
-        historial:         doc.historial,
+        paquete_id:       doc.paquete_id,
+        estado_actual:    doc.estado_actual,
+        historial:        doc.historial,
         incidencias_count: cnt
       };
     }));
 
     res.json({ totalItems, page, pageSize, items });
-
   } catch (err) {
     console.error("Error al obtener todos los paquetes:", err);
     res.status(500).json({ error: "Error interno del servidor." });
