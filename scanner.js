@@ -205,20 +205,39 @@ router.put("/en-almacen-mx", async (req, res) => {
   }
 });
 
-// Ruta para devolver todos los paquetes (historial completo) con conteo de incidencias
+// Ruta para devolver todos los paquetes (historial completo) con conteo de incidencias y paginación
 router.get("/all", async (req, res) => {
   try {
     const estadosCol = global.db.collection("estados");
     const incCol     = global.db.collection("Incidencias");
 
-    const paquetes = await estadosCol.find({}).toArray();
+    // Parámetros de paginación
+    const page     = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
+
+    // Total de paquetes
+    const totalItems = await estadosCol.countDocuments({});
+
+    // Traer sólo la página solicitada
+    const paquetes = await estadosCol
+      .find({})
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .toArray();
+
     // Enriquecer cada paquete con el número de incidencias
-    const enriched = await Promise.all(paquetes.map(async p => {
+    const items = await Promise.all(paquetes.map(async p => {
       const cnt = await incCol.countDocuments({ paquete_id: p.paquete_id });
       return { ...p, incidencias_count: cnt };
     }));
 
-    res.json(enriched);
+    // Respuesta con metadata de paginación
+    res.json({
+      totalItems,
+      page,
+      pageSize,
+      items
+    });
   } catch (error) {
     console.error("Error al obtener todos los paquetes:", error);
     res.status(500).json({ error: "Error interno del servidor." });
