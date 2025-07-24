@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // ----------------------------------------
-// RUTAS DE PAQUETES (lógica existente)
+// RUTAS DE PAQUETES
 // ----------------------------------------
 
 // [POST] /scanner/recibido
@@ -190,8 +190,6 @@ router.put("/en-almacen-mx", async (req, res) => {
  * Query params:
  *   - page       (número de página, default 1)
  *   - pageSize   (tamaño de página, default 10)
- *   - sortField  ('time' | 'id', default 'time')
- *   - sortOrder  ('asc' | 'desc', default 'desc')
  *   - state      (filtro por estado_actual)
  */
 router.get("/all", async (req, res) => {
@@ -199,44 +197,39 @@ router.get("/all", async (req, res) => {
     const estadosCol = global.db.collection("estados");
     const incCol     = global.db.collection("Incidencias");
 
-    // Parámetros
-    const page      = Math.max(1, parseInt(req.query.page,     10) || 1);
-    const pageSize  = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
-    const sortField = req.query.sortField === "id" ? "paquete_id" : "lastFecha";
-    const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    // Parámetros de paginación
+    const page     = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
 
-    const match     = {};
-    if (req.query.state) match.estado_actual = req.query.state;
+    // Filtro opcional
+    const match = {};
+    if (req.query.state) {
+      match.estado_actual = req.query.state;
+    }
 
-    // Pipeline con extracción correcta de última fecha
-    const pipeline = [
-      { $match: match },
-      { $project: {
-          paquete_id:    1,
-          estado_actual: 1,
-          historial:     1,
-          // EXTRAEMOS ÚLTIMA FECHA CON $arrayElemAt
-          lastFecha:     { $arrayElemAt: ["$historial.fecha", -1] }
-      }},
-      { $sort: { [sortField]: sortOrder } },
-      { $skip: (page - 1) * pageSize },
-      { $limit: pageSize }
-    ];
+    // Conteo total
+    const totalItems = await estadosCol.countDocuments(match);
 
-    const [docs, totalItems] = await Promise.all([
-      estadosCol.aggregate(pipeline).toArray(),
-      estadosCol.countDocuments(match)
-    ]);
+    // Encontrar + ordenar por fecha más reciente (historial.fecha desc) + paginar
+    const docs = await estadosCol
+      .find(match)
+      .sort({ "historial.fecha": -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .toArray();
 
-    const items = await Promise.all(docs.map(async doc => {
-      const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
-      return {
-        paquete_id:        doc.paquete_id,
-        estado_actual:     doc.estado_actual,
-        historial:         doc.historial,
-        incidencias_count: cnt
-      };
-    }));
+    // Enriquecer con conteo de incidencias
+    const items = await Promise.all(
+      docs.map(async doc => {
+        const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
+        return {
+          paquete_id:        doc.paquete_id,
+          estado_actual:     doc.estado_actual,
+          historial:         doc.historial,
+          incidencias_count: cnt
+        };
+      })
+    );
 
     res.json({ totalItems, page, pageSize, items });
   } catch (err) {
@@ -246,7 +239,7 @@ router.get("/all", async (req, res) => {
 });
 
 // ----------------------------------------
-// RUTAS DE INCIDENCIAS (sin cambios)
+// RUTAS DE INCIDENCIAS
 // ----------------------------------------
 router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
   const { paquete_id, tipo, descripcion } = req.body;
