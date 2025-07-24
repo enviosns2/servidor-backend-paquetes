@@ -322,14 +322,14 @@
   <script>
     console.log("Script cargado correctamente");
 
-    // — Estado global —
+    // — Variables globales —
     let mode         = "recibido";
     let tableData    = [];
     let totalItems   = 0;
     let currentPage  = 1;
     let pageSize     = 10;
-    let sortField    = "time";     // 'time' or 'id'
-    let sortOrder    = "desc";     // 'asc' or 'desc'
+    let sortField    = "time";   // 'time' or 'id'
+    let sortOrder    = "desc";   // 'asc' or 'desc'
     let filterText   = "";
     let filterState  = "";
 
@@ -343,7 +343,7 @@
     let incPage      = 1;
     let incPageSize  = 10;
 
-    // — DOM refs —
+    // — Referencias DOM —
     const counterEl    = document.getElementById("counter");
     const scanTbody    = document.querySelector("#scanTable tbody");
     const miniTbody    = document.querySelector("#miniTable tbody");
@@ -364,7 +364,7 @@
     const barcodeInput = document.getElementById("barcodeInput");
     const statusEl     = document.getElementById("status");
 
-    // — Utils —
+    // — Funciones auxiliares —
     function clearStatus(){
       statusEl.innerText = "";
       statusEl.className = "";
@@ -388,10 +388,11 @@
       return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    // — Views —
+    // — Cambio de vista —
     function showView(v){
-      ["view-escaneo","view-historial","view-incidencias"]
-        .forEach(id=> document.getElementById(id).style.display = (id===v?"block":"none"));
+      ["view-escaneo","view-historial","view-incidencias"].forEach(id=>
+        document.getElementById(id).style.display = id===v ? "block" : "none"
+      );
     }
     document.getElementById("nav-escaneo").onclick   = ()=> showView("view-escaneo");
     document.getElementById("nav-historial").onclick = ()=> showView("view-historial");
@@ -412,7 +413,7 @@
     setInterval(()=>{
       const v = sanitizeInput(barcodeInput.value);
       if(barcodeInput.value!==v) barcodeInput.value=v;
-    }, 25);
+    },25);
     new MutationObserver(()=>{
       const v = sanitizeInput(barcodeInput.value);
       if(barcodeInput.value!==v) barcodeInput.value=v;
@@ -429,7 +430,7 @@
             const res = await fetch(
               `https://servidor-backend-paquetes.onrender.com/scanner${endpoint}`,
               {
-                method: mode==="recibido"?"POST":"PUT",
+                method: mode==="recibido" ? "POST" : "PUT",
                 headers: {"Content-Type":"application/json"},
                 body: JSON.stringify({ paquete_id: code })
               }
@@ -453,7 +454,7 @@
       }
     });
 
-    // — Load & render historial with server‑side sort/filter/paginate —
+    // — Carga del historial (servidor) —
     async function loadPage(page=1){
       try {
         let url = `https://servidor-backend-paquetes.onrender.com/scanner/all`
@@ -513,15 +514,17 @@
     }
 
     function renderTable(){
-      // update counter & pagination
+      // contador + paginación
       const start = (currentPage-1)*pageSize + 1;
       const end   = Math.min(currentPage*pageSize, totalItems);
       counterEl.innerText = `Mostrando ${start}–${end} de ${totalItems} paquetes`;
-      // client‑side search filter
+
+      // búsqueda cliente
       const filtered = tableData.filter(r=>
         !filterText || r.id.toLowerCase().includes(filterText)
       );
-      // render rows
+
+      // render filas
       scanTbody.innerHTML = "";
       filtered.forEach(r=>{
         const tr = document.createElement("tr");
@@ -544,18 +547,20 @@
         tr.appendChild(tdA);
         scanTbody.appendChild(tr);
       });
+
       const totalPages = Math.max(1, Math.ceil(totalItems/pageSize));
       pageInfo.innerText   = `Página ${currentPage} de ${totalPages}`;
       prevPageBtn.disabled = currentPage===1;
       nextPageBtn.disabled = currentPage===totalPages;
     }
 
-    // — Header click triggers server‑side sort & reload —
+    // — Ordenación en servidor por fecha desc —
     document.querySelectorAll("#scanTable th[data-col]").forEach(th=>{
       th.addEventListener("click", ()=>{
         const c = th.dataset.col;
-        if (sortField===c) {
-          sortOrder = (sortOrder==="asc" ? "desc" : "asc");
+        // togglear asc/desc si es misma columna, si no, reset a asc
+        if(sortField===c){
+          sortOrder = sortOrder==="asc"?"desc":"asc";
         } else {
           sortField = c;
           sortOrder = "asc";
@@ -564,26 +569,26 @@
       });
     });
 
-    // — State filter now reloads —
+    // — Filtro estado recarga —
     stateFilter.addEventListener("change", e=>{
       filterState = e.target.value;
       loadPage(1);
     });
 
-    // — Client‑side search —
+    // — Búsqueda cliente —
     searchInput.addEventListener("input", e=>{
       filterText = e.target.value.toLowerCase();
       renderTable();
     });
 
-    // — Prev/Next page —
+    // — Paginación —
     prevPageBtn.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
     nextPageBtn.addEventListener("click", ()=>{
       const tp = Math.ceil(totalItems/pageSize);
       if(currentPage<tp) loadPage(currentPage+1);
     });
 
-    // — Row clicks for incidencias/ modal —
+    // — Clic en filas para incidencias/modal —
     function attachRowClicks(sel){
       document.querySelector(sel).addEventListener("click", e=>{
         const id = e.target.dataset.id;
@@ -631,7 +636,7 @@
       }
     });
 
-    // — Incidencias list, filters, pagination —
+    // — Incidencias listas, filtros y paginación —
     const incTbody      = document.querySelector("#incTable tbody");
     const incPrevBtn    = document.getElementById("incPrev");
     const incNextBtn    = document.getElementById("incNext");
