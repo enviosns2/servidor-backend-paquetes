@@ -38,7 +38,8 @@ router.post("/recibido", async (req, res) => {
     if (await col.findOne({ paquete_id })) {
       return res.status(400).json({ error: "El paquete ya existe con estado inicial." });
     }
-    const fecha = new Date().toISOString();
+    // <-- guardamos fecha como Date()
+    const fecha = new Date();
     const nuevo = {
       paquete_id,
       estado_actual: "Recibido",
@@ -62,7 +63,7 @@ router.put("/en-transito-nacional-mx", async (req, res) => {
     const col = global.db.collection("estados");
     const p   = await col.findOne({ paquete_id });
     if (!p) return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-    const fecha = new Date().toISOString();
+    const fecha = new Date();
     const { modifiedCount } = await col.updateOne(
       { paquete_id },
       {
@@ -88,7 +89,7 @@ router.put("/en-transito-nacional-eu", async (req, res) => {
     const col = global.db.collection("estados");
     const p   = await col.findOne({ paquete_id });
     if (!p) return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-    const fecha = new Date().toISOString();
+    const fecha = new Date();
     const { modifiedCount } = await col.updateOne(
       { paquete_id },
       {
@@ -114,7 +115,7 @@ router.put("/en-transito-internacional", async (req, res) => {
     const col = global.db.collection("estados");
     const p   = await col.findOne({ paquete_id });
     if (!p) return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-    const fecha = new Date().toISOString();
+    const fecha = new Date();
     const { modifiedCount } = await col.updateOne(
       { paquete_id },
       {
@@ -140,7 +141,7 @@ router.put("/en-almacen-eu", async (req, res) => {
     const col = global.db.collection("estados");
     const p   = await col.findOne({ paquete_id });
     if (!p) return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-    const fecha = new Date().toISOString();
+    const fecha = new Date();
     const { modifiedCount } = await col.updateOne(
       { paquete_id },
       {
@@ -166,7 +167,7 @@ router.put("/en-almacen-mx", async (req, res) => {
     const col = global.db.collection("estados");
     const p   = await col.findOne({ paquete_id });
     if (!p) return res.status(404).json({ error: "El paquete no existe en la base de datos." });
-    const fecha = new Date().toISOString();
+    const fecha = new Date();
     const { modifiedCount } = await col.updateOne(
       { paquete_id },
       {
@@ -193,7 +194,7 @@ router.put("/en-almacen-mx", async (req, res) => {
  *   - state      (filtro por estado_actual)
  *
  * Orden fijo: siempre por la fecha máxima de historial (descendente),
- * luego aplica skip/limit para paginar correctamente.
+ *            luego aplica skip/limit para paginar correctamente.
  */
 router.get("/all", async (req, res) => {
   try {
@@ -210,24 +211,24 @@ router.get("/all", async (req, res) => {
       match.estado_actual = req.query.state;
     }
 
-    // Agregación
+    // Agregación: $addFields con $max de fechas (Date), luego sort, skip, limit
     const pipeline = [
       { $match: match },
 
-      // Corregido: calculamos la fecha máxima de TODO el historial
+      // fecha real de tipo Date
       { $addFields: {
           lastFecha: { $max: "$historial.fecha" }
         }
       },
 
-      // Orden descendente por esa fecha
+      // orden descendente
       { $sort: { lastFecha: -1 } },
 
-      // Paginación
+      // saltar y limitar
       { $skip: (page - 1) * pageSize },
       { $limit: pageSize },
 
-      // Proyección final
+      // proyectar lo necesario
       { $project: {
           paquete_id:        1,
           estado_actual:     1,
@@ -235,7 +236,7 @@ router.get("/all", async (req, res) => {
       }}
     ];
 
-    // Ejecutar agregación y conteo total simultáneo
+    // Ejecutar agregación y contar total de match
     const [docs, totalItems] = await Promise.all([
       estadosCol.aggregate(pipeline).toArray(),
       estadosCol.countDocuments(match)
@@ -271,7 +272,7 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
   }
   try {
     const collection = global.db.collection("Incidencias");
-    const fecha      = new Date().toISOString();
+    const fecha      = new Date();
     const incId      = `${paquete_id}-IN`;
     const incidencia = {
       _id: incId,
@@ -323,7 +324,7 @@ router.put("/incidencias/:id", async (req, res) => {
     const collection = global.db.collection("Incidencias");
     const updates    = {};
     const pushOps    = [];
-    const fecha      = new Date().toISOString();
+    const fecha      = new Date();
 
     if (nuevo_estado) {
       updates.estado = nuevo_estado;
