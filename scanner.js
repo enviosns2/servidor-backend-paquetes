@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // ----------------------------------------
-// RUTAS DE PAQUETES (sin cambios en tu lógica)
+// RUTAS DE PAQUETES (lógica existente)
 // ----------------------------------------
 
 // [POST] /scanner/recibido
@@ -204,16 +204,18 @@ router.get("/all", async (req, res) => {
     const pageSize  = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
     const sortField = req.query.sortField === "id" ? "paquete_id" : "lastFecha";
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+
     const match     = {};
     if (req.query.state) match.estado_actual = req.query.state;
 
-    // Pipeline con $arrayElemAt para extraer última fecha
+    // Pipeline con extracción correcta de última fecha
     const pipeline = [
       { $match: match },
       { $project: {
           paquete_id:    1,
           estado_actual: 1,
           historial:     1,
+          // EXTRAEMOS ÚLTIMA FECHA CON $arrayElemAt
           lastFecha:     { $arrayElemAt: ["$historial.fecha", -1] }
       }},
       { $sort: { [sortField]: sortOrder } },
