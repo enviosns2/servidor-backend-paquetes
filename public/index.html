@@ -328,8 +328,8 @@
     let totalItems   = 0;
     let currentPage  = 1;
     let pageSize     = 10;
-    let sortField    = "time";   // 'time' or 'id'
-    let sortOrder    = "desc";   // 'asc' or 'desc'
+    let sortField    = "time";      // campo de orden: 'time' o 'id'
+    let sortOrder    = "desc";      // dirección: 'asc' o 'desc'
     let filterText   = "";
     let filterState  = "";
 
@@ -377,26 +377,27 @@
     function showToast(msg, type){
       toast.innerText = msg;
       toast.className = `show ${type}`;
-      setTimeout(()=> toast.className="", 3000);
+      setTimeout(() => toast.className = "", 3000);
     }
     function sanitizeInput(v){
       return v.replace(/[^0-9a-zA-Z]/g, "-");
     }
     function formatDateTime(iso){
       const d = new Date(iso);
-      const pad = n => n.toString().padStart(2,"0");
+      const pad = n => n.toString().padStart(2, "0");
       return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    // — Cambio de vista —
+    // — Manejo de vistas —
     function showView(v){
-      ["view-escaneo","view-historial","view-incidencias"].forEach(id=>
-        document.getElementById(id).style.display = id===v ? "block" : "none"
-      );
+      ["view-escaneo","view-historial","view-incidencias"]
+        .forEach(id =>
+          document.getElementById(id).style.display = (id === v) ? "block" : "none"
+        );
     }
-    document.getElementById("nav-escaneo").onclick   = ()=> showView("view-escaneo");
-    document.getElementById("nav-historial").onclick = ()=> showView("view-historial");
-    document.getElementById("nav-incidencias").onclick = ()=>{
+    document.getElementById("nav-escaneo").onclick   = () => showView("view-escaneo");
+    document.getElementById("nav-historial").onclick = () => showView("view-historial");
+    document.getElementById("nav-incidencias").onclick = () => {
       showView("view-incidencias");
       loadIncidencias();
     };
@@ -404,33 +405,38 @@
     // — Scanner widget —
     modeSelect.addEventListener("change", ()=>{
       mode = modeSelect.value;
-      document.getElementById("mode").innerHTML = `Modo actual: <strong>${modeSelect.selectedOptions[0].text}</strong>`;
+      document.getElementById("mode").innerHTML =
+        `Modo actual: <strong>${modeSelect.selectedOptions[0].text}</strong>`;
       clearStatus();
     });
-    ["beforeinput","input","paste","keyup"].forEach(evt=>
-      barcodeInput.addEventListener(evt, ()=> barcodeInput.value = sanitizeInput(barcodeInput.value))
-    );
+    ["beforeinput","input","paste","keyup"].forEach(evt=>{
+      barcodeInput.addEventListener(evt,
+        ()=> barcodeInput.value = sanitizeInput(barcodeInput.value)
+      );
+    });
     setInterval(()=>{
       const v = sanitizeInput(barcodeInput.value);
-      if(barcodeInput.value!==v) barcodeInput.value=v;
-    },25);
+      if(barcodeInput.value !== v) barcodeInput.value = v;
+    }, 25);
     new MutationObserver(()=>{
       const v = sanitizeInput(barcodeInput.value);
-      if(barcodeInput.value!==v) barcodeInput.value=v;
-    }).observe(barcodeInput, { childList:true, characterData:true, subtree:true });
+      if(barcodeInput.value !== v) barcodeInput.value = v;
+    }).observe(barcodeInput, {childList:true,characterData:true,subtree:true});
 
     barcodeInput.addEventListener("keydown", e=>{
-      if(e.key==="Enter"){
+      if(e.key === "Enter"){
         e.preventDefault();
         setTimeout(async ()=>{
           const code = sanitizeInput(barcodeInput.value.trim());
           if(!code) return updateStatus("Por favor, escanea un código válido.","error");
-          const endpoint = mode==="recibido" ? "/recibido" : `/${mode}`;
+          const endpoint = mode === "recibido"
+            ? "/recibido"
+            : `/${mode}`;
           try {
             const res = await fetch(
               `https://servidor-backend-paquetes.onrender.com/scanner${endpoint}`,
               {
-                method: mode==="recibido" ? "POST" : "PUT",
+                method: mode==="recibido"?"POST":"PUT",
                 headers: {"Content-Type":"application/json"},
                 body: JSON.stringify({ paquete_id: code })
               }
@@ -448,21 +454,22 @@
             updateStatus("Error de red.","error");
             showToast("Error de red","error");
           } finally {
-            barcodeInput.value="";
+            barcodeInput.value = "";
           }
-        },150);
+        }, 150);
       }
     });
 
-    // — Carga del historial (servidor) —
-    async function loadPage(page=1){
+    // — Carga y render del historial desde backend —
+    async function loadPage(page = 1){
+      currentPage = page;
+      let url = `https://servidor-backend-paquetes.onrender.com/scanner/all`
+              + `?page=${page}`
+              + `&pageSize=${pageSize}`
+              + `&sortField=${sortField}`
+              + `&sortOrder=${sortOrder}`;
+      if(filterState) url += `&state=${encodeURIComponent(filterState)}`;
       try {
-        let url = `https://servidor-backend-paquetes.onrender.com/scanner/all`
-                + `?page=${page}`
-                + `&pageSize=${pageSize}`
-                + `&sortField=${sortField}`
-                + `&sortOrder=${sortOrder}`;
-        if(filterState) url += `&state=${encodeURIComponent(filterState)}`;
         const resp = await fetch(url);
         const { totalItems: total, page: current, items } = await resp.json();
         totalItems = total; currentPage = current;
@@ -470,11 +477,11 @@
           const h = p.historial;
           return {
             timeISO: h[h.length-1].fecha,
-            time:    formatDateTime(h[h.length-1].fecha),
-            id:      p.paquete_id,
-            new:     p.estado_actual,
-            prev:    h.length>1 ? h[h.length-2].estado : "",
-            inc:     p.incidencias_count
+            time:   formatDateTime(h[h.length-1].fecha),
+            id:     p.paquete_id,
+            new:    p.estado_actual,
+            prev:   h.length>1 ? h[h.length-2].estado : "",
+            inc:    p.incidencias_count
           };
         });
         renderTable();
@@ -500,8 +507,7 @@
         tr.appendChild(tdInc);
         const tdA = document.createElement("td");
         tdA.innerHTML = `
-          <button class="${r.inc>0?"mini-view-inc":"mini-report-inc"}"
-                  data-id="${r.id}">
+          <button class="${r.inc>0?"mini-view-inc":"mini-report-inc"}" data-id="${r.id}">
             ${r.inc>0?"Ver":"Reportar"} incidencia
           </button>`;
         tr.appendChild(tdA);
@@ -514,17 +520,15 @@
     }
 
     function renderTable(){
-      // contador + paginación
       const start = (currentPage-1)*pageSize + 1;
       const end   = Math.min(currentPage*pageSize, totalItems);
       counterEl.innerText = `Mostrando ${start}–${end} de ${totalItems} paquetes`;
 
-      // búsqueda cliente
+      // aplicación de búsqueda CLIENTE
       const filtered = tableData.filter(r=>
         !filterText || r.id.toLowerCase().includes(filterText)
       );
 
-      // render filas
       scanTbody.innerHTML = "";
       filtered.forEach(r=>{
         const tr = document.createElement("tr");
@@ -540,8 +544,7 @@
         tr.appendChild(tdInc);
         const tdA = document.createElement("td");
         tdA.innerHTML = `
-          <button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}"
-                  data-id="${r.id}">
+          <button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">
             ${r.inc>0?"Ver":"Reportar"} incidencia
           </button>`;
         tr.appendChild(tdA);
@@ -550,17 +553,16 @@
 
       const totalPages = Math.max(1, Math.ceil(totalItems/pageSize));
       pageInfo.innerText   = `Página ${currentPage} de ${totalPages}`;
-      prevPageBtn.disabled = currentPage===1;
-      nextPageBtn.disabled = currentPage===totalPages;
+      prevPageBtn.disabled = currentPage === 1;
+      nextPageBtn.disabled = currentPage === totalPages;
     }
 
-    // — Ordenación en servidor por fecha desc —
+    // — Orden SERVER-SIDE al clickar cabeceras —
     document.querySelectorAll("#scanTable th[data-col]").forEach(th=>{
       th.addEventListener("click", ()=>{
         const c = th.dataset.col;
-        // togglear asc/desc si es misma columna, si no, reset a asc
-        if(sortField===c){
-          sortOrder = sortOrder==="asc"?"desc":"asc";
+        if(sortField === c){
+          sortOrder = sortOrder==="asc" ? "desc" : "asc";
         } else {
           sortField = c;
           sortOrder = "asc";
@@ -569,13 +571,13 @@
       });
     });
 
-    // — Filtro estado recarga —
+    // — Filtrado por estado → recarga —
     stateFilter.addEventListener("change", e=>{
       filterState = e.target.value;
       loadPage(1);
     });
 
-    // — Búsqueda cliente —
+    // — Búsqueda CLIENTE sobre lo ya cargado —
     searchInput.addEventListener("input", e=>{
       filterText = e.target.value.toLowerCase();
       renderTable();
@@ -583,26 +585,22 @@
 
     // — Paginación —
     prevPageBtn.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
-    nextPageBtn.addEventListener("click", ()=>{
-      const tp = Math.ceil(totalItems/pageSize);
-      if(currentPage<tp) loadPage(currentPage+1);
-    });
+    nextPageBtn.addEventListener("click", ()=>{ const tp=Math.ceil(totalItems/pageSize); if(currentPage<tp) loadPage(currentPage+1); });
 
-    // — Clic en filas para incidencias/modal —
+    // — Incidencias y modal — (sin cambios en lógica)
     function attachRowClicks(sel){
       document.querySelector(sel).addEventListener("click", e=>{
         const id = e.target.dataset.id;
         if(!id) return;
         if(e.target.matches(".inc-count") ||
-           e.target.matches(".mini-view-inc")||
-           e.target.matches(".hist-view-inc")) {
+           e.target.matches(".mini-view-inc") ||
+           e.target.matches(".hist-view-inc")){
           showView("view-incidencias");
           document.getElementById("incSearch").value = id;
           incFilterText = id.toLowerCase();
           loadIncidencias();
-        }
-        else if(e.target.matches(".mini-report-inc")||
-                e.target.matches(".hist-report-inc")) {
+        } else if(e.target.matches(".mini-report-inc") ||
+                  e.target.matches(".hist-report-inc")){
           incPaquete.value = id;
           modal.style.display = "flex";
         }
@@ -611,22 +609,21 @@
     attachRowClicks("#miniTable");
     attachRowClicks("#scanTable");
 
-    // — Modal incidencia —
-    incCancel.addEventListener("click", ()=> modal.style.display="none");
+    incCancel.addEventListener("click", ()=> modal.style.display = "none");
     incSave.addEventListener("click", async ()=>{
       const form = new FormData();
       form.append("paquete_id", incPaquete.value);
-      form.append("tipo",       incTipo.value);
-      form.append("descripcion",incDesc.value);
+      form.append("tipo", incTipo.value);
+      form.append("descripcion", incDesc.value);
       Array.from(incAdjuntos.files).forEach(f=> form.append("adjuntos", f));
       try {
         const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias", {
-          method:"POST", body: form
+          method: "POST", body: form
         });
         const j = await res.json();
         if(res.ok){
           showToast("Incidencia creada correctamente","success");
-          modal.style.display="none";
+          modal.style.display = "none";
           loadPage(currentPage);
         } else {
           showToast(j.error||"Error al crear incidencia","error");
@@ -636,7 +633,6 @@
       }
     });
 
-    // — Incidencias listas, filtros y paginación —
     const incTbody      = document.querySelector("#incTable tbody");
     const incPrevBtn    = document.getElementById("incPrev");
     const incNextBtn    = document.getElementById("incNext");
@@ -671,28 +667,33 @@
     function renderIncTable(){
       const all = filteredInc().sort((a,b)=>{
         let av = a[incSortCol], bv = b[incSortCol];
-        if(av<bv) return incSortAsc?-1:1;
-        if(av>bv) return incSortAsc?1:-1;
+        if(av < bv) return incSortAsc ? -1 : 1;
+        if(av > bv) return incSortAsc ?  1 : -1;
         return 0;
       });
-      const start = (incPage-1)*incPageSize+1;
+      const start = (incPage-1)*incPageSize + 1;
       const end   = Math.min(incPage*incPageSize, all.length);
       incPageInfoEl.innerText = `Mostrando ${start}–${end} de ${all.length} incidencias`;
+
       incTbody.innerHTML = "";
       all.slice(start-1,end).forEach(i=>{
         const tr = document.createElement("tr");
         ["_id","paquete_id","tipo"].forEach(k=>{
           const td = document.createElement("td");
-          td.innerText = i[k]; tr.appendChild(td);
+          td.innerText = i[k];
+          tr.appendChild(td);
         });
         const tdEst = document.createElement("td");
         tdEst.innerHTML = `<span style="color:${
-          i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"
+          i.estado==="Abierta"?"red":
+          i.estado==="En proceso"?"orange":"green"
         }">${i.estado}</span>`;
         tr.appendChild(tdEst);
+
         const tdDate = document.createElement("td");
         tdDate.innerText = formatDateTime(i.fecha_creacion);
         tr.appendChild(tdDate);
+
         const tdA = document.createElement("td");
         tdA.innerHTML = `
           <button class="view-inc" data-id="${i._id}">Ver</button>
@@ -701,7 +702,8 @@
         tr.appendChild(tdA);
         incTbody.appendChild(tr);
       });
-      const maxP = Math.max(1, Math.ceil(filteredInc().length/incPageSize));
+
+      const maxP = Math.max(1,Math.ceil(filteredInc().length/incPageSize));
       incPrevBtn.disabled = incPage===1;
       incNextBtn.disabled = incPage===maxP;
     }
@@ -714,14 +716,16 @@
         renderIncTable();
       });
     });
-    incPrevBtn.addEventListener("click", ()=>{ if(incPage>1){ incPage--; renderIncTable(); }});
+    incPrevBtn.addEventListener("click", ()=>{ if(incPage>1){ incPage--; renderIncTable(); }}); 
     incNextBtn.addEventListener("click", ()=>{ const mp=Math.ceil(filteredInc().length/incPageSize); if(incPage<mp){ incPage++; renderIncTable(); }});
 
     document.getElementById("view-incidencias").addEventListener("click", e=>{
-      if(e.target.matches(".view-inc"))
+      if(e.target.matches(".view-inc")){
         alert("Ver detalle de incidencia "+e.target.dataset.id);
-      if(e.target.matches(".edit-inc"))
+      }
+      if(e.target.matches(".edit-inc")){
         alert("Editar estado de incidencia "+e.target.dataset.id);
+      }
     });
 
     // — Inicialización —
