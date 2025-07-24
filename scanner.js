@@ -192,8 +192,8 @@ router.put("/en-almacen-mx", async (req, res) => {
  *   - pageSize   (tamaño de página, default 10)
  *   - state      (filtro por estado_actual)
  *
- * Orden fijo: siempre por la última fecha de historial (descendente),
- *            luego aplica skip/limit para paginar correctamente.
+ * Orden fijo: siempre por la fecha máxima de historial (descendente),
+ * luego aplica skip/limit para paginar correctamente.
  */
 router.get("/all", async (req, res) => {
   try {
@@ -210,54 +210,50 @@ router.get("/all", async (req, res) => {
       match.estado_actual = req.query.state;
     }
 
-    // Agregación con facet para contar total y paginar
+    // Agregación
     const pipeline = [
       { $match: match },
-      // Calcular lastFecha como el último elemento del array de fechas
+
+      // Corregido: calculamos la fecha máxima de TODO el historial
       { $addFields: {
-          lastFecha: { $arrayElemAt: ["$historial.fecha", -1] }
+          lastFecha: { $max: "$historial.fecha" }
         }
       },
-      // Ordenar siempre descendente por lastFecha
+
+      // Orden descendente por esa fecha
       { $sort: { lastFecha: -1 } },
-      // Facet: separa conteo total y datos paginados
-      { $facet: {
-          metadata: [
-            { $count: "totalItems" }
-          ],
-          data: [
-            { $skip: (page - 1) * pageSize },
-            { $limit: pageSize }
-          ]
-      }},
-      // Desenrollar metadata y proyectar salida final
-      { $unwind: "$metadata" },
+
+      // Paginación
+      { $skip: (page - 1) * pageSize },
+      { $limit: pageSize },
+
+      // Proyección final
       { $project: {
-          totalItems: "$metadata.totalItems",
-          items: "$data"
+          paquete_id:        1,
+          estado_actual:     1,
+          historial:         1
       }}
     ];
 
-    const agg = await estadosCol.aggregate(pipeline).toArray();
-    // Si no hay nada, devolvemos vacío
-    if (agg.length === 0) {
-      return res.json({ totalItems: 0, page, pageSize, items: [] });
-    }
-
-    const { totalItems, items: docs } = agg[0];
+    // Ejecutar agregación y conteo total simultáneo
+    const [docs, totalItems] = await Promise.all([
+      estadosCol.aggregate(pipeline).toArray(),
+      estadosCol.countDocuments(match)
+    ]);
 
     // Enriquecer con conteo de incidencias
     const items = await Promise.all(docs.map(async doc => {
       const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
       return {
-        paquete_id:       doc.paquete_id,
-        estado_actual:    doc.estado_actual,
-        historial:        doc.historial,
+        paquete_id:        doc.paquete_id,
+        estado_actual:     doc.estado_actual,
+        historial:         doc.historial,
         incidencias_count: cnt
       };
     }));
 
     res.json({ totalItems, page, pageSize, items });
+
   } catch (err) {
     console.error("Error al obtener todos los paquetes:", err);
     res.status(500).json({ error: "Error interno del servidor." });
