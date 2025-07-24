@@ -1,9 +1,9 @@
 // routes/scanner.js
-const express = require("express");
-const router  = express.Router();
-const fs      = require("fs");
-const path    = require("path");
-const multer  = require("multer");
+const express    = require("express");
+const router     = express.Router();
+const fs         = require("fs");
+const path       = require("path");
+const multer     = require("multer");
 const { ObjectId } = require("mongodb");
 
 // --- Asegurar carpeta de uploads ---
@@ -207,22 +207,21 @@ router.get("/all", async (req, res) => {
     const match     = {};
     if (req.query.state) match.estado_actual = req.query.state;
 
-    // Nuevo pipeline
+    // Pipeline con $arrayElemAt para extraer última fecha
     const pipeline = [
       { $match: match },
       { $project: {
-          paquete_id:     1,
-          estado_actual:  1,
-          historial:      1,
-          // extrae el último elemento de historial.fecha
-          lastFecha:      { $last: "$historial.fecha" }
+          paquete_id:    1,
+          estado_actual: 1,
+          historial:     1,
+          lastFecha:     { $arrayElemAt: ["$historial.fecha", -1] }
       }},
       { $sort: { [sortField]: sortOrder } },
       { $skip: (page - 1) * pageSize },
       { $limit: pageSize }
     ];
 
-    const [ docs, totalItems ] = await Promise.all([
+    const [docs, totalItems] = await Promise.all([
       estadosCol.aggregate(pipeline).toArray(),
       estadosCol.countDocuments(match)
     ]);
@@ -230,9 +229,9 @@ router.get("/all", async (req, res) => {
     const items = await Promise.all(docs.map(async doc => {
       const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
       return {
-        paquete_id:       doc.paquete_id,
-        estado_actual:    doc.estado_actual,
-        historial:        doc.historial,
+        paquete_id:        doc.paquete_id,
+        estado_actual:     doc.estado_actual,
+        historial:         doc.historial,
         incidencias_count: cnt
       };
     }));
@@ -273,6 +272,7 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
     res.status(500).json({ error: "Error interno al crear incidencia." });
   }
 });
+
 router.get("/incidencias", async (req, res) => {
   try {
     const collection  = global.db.collection("Incidencias");
@@ -283,6 +283,7 @@ router.get("/incidencias", async (req, res) => {
     res.status(500).json({ error: "Error interno al obtener incidencias." });
   }
 });
+
 router.get("/incidencias/:id", async (req, res) => {
   try {
     const collection = global.db.collection("Incidencias");
@@ -294,6 +295,7 @@ router.get("/incidencias/:id", async (req, res) => {
     res.status(500).json({ error: "Error interno al obtener incidencia." });
   }
 });
+
 router.put("/incidencias/:id", async (req, res) => {
   const { nuevo_estado, comentario } = req.body;
   if (!nuevo_estado && !comentario) {
