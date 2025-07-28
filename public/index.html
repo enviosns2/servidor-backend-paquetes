@@ -57,7 +57,7 @@
     .success { color: green; }
     .error   { color: red; }
 
-    /* Mini‑historial */
+    /* Mini-historial */
     #miniHistory {
       margin-bottom: 30px;
     }
@@ -192,7 +192,7 @@
           <p id="status" aria-live="polite"></p>
         </div>
 
-        <!-- MINI‑HISTORIAL -->
+        <!-- MINI-HISTORIAL -->
         <div id="miniHistory">
           <h2>Últimos escaneos</h2>
           <table id="miniTable">
@@ -266,7 +266,9 @@
             <option value="">Todos los estados</option>
             <option value="Abierta">Abierta</option>
             <option value="En proceso">En proceso</option>
+            <option value="Resuelta">Resuelta</option>
             <option value="Cerrada">Cerrada</option>
+            <option value="Rechazada">Rechazada</option>
           </select>
         </div>
         <table id="incTable">
@@ -317,23 +319,56 @@
     </div>
   </div>
 
+  <!-- Modal para detalle y edición de incidencia -->
+  <div id="incDetailModal" class="modal">
+    <div class="modal-content">
+      <h2>Detalle de Incidencia</h2>
+      <label for="detailStateSelect">Estado</label>
+      <select id="detailStateSelect">
+        <option>Abierta</option>
+        <option>En proceso</option>
+        <option>Resuelta</option>
+        <option>Cerrada</option>
+        <option>Rechazada</option>
+      </select>
+      <button id="detailChangeStateBtn">Cambiar estado</button>
+
+      <label for="detailCommentInput">Comentario</label>
+      <textarea id="detailCommentInput"></textarea>
+      <button id="detailAddCommentBtn">Agregar comentario</button>
+
+      <label>Adjuntos existentes</label>
+      <div id="detailAttachments" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+
+      <label for="detailFileInput">Subir nuevos adjuntos</label>
+      <input type="file" id="detailFileInput" multiple>
+      <button id="detailUploadBtn">Subir adjuntos</button>
+
+      <h3>Historial</h3>
+      <div id="detailTimeline" style="max-height:200px; overflow-y:auto;"></div>
+
+      <div class="buttons" style="text-align:right; margin-top:10px;">
+        <button id="detailCloseBtn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <script>
     console.log("Script cargado correctamente");
 
-    // — Variables globales —
+    // — Variables globales — (sin cambios)
     let mode         = "recibido";
     let tableData    = [];
     let totalItems   = 0;
     let currentPage  = 1;
     let pageSize     = 10;
-    let sortField    = "time";      // campo de orden: 'time' o 'id'
-    let sortOrder    = "desc";      // dirección: 'asc' o 'desc'
+    let sortField    = "time";
+    let sortOrder    = "desc";
     let filterText   = "";
     let filterState  = "";
 
-    // Incidencias
     let incData      = [];
     let incSortCol   = "fecha_creacion";
     let incSortAsc   = false;
@@ -343,7 +378,7 @@
     let incPage      = 1;
     let incPageSize  = 10;
 
-    // — Referencias DOM —
+    // — Referencias DOM — (sin cambios)
     const counterEl    = document.getElementById("counter");
     const scanTbody    = document.querySelector("#scanTable tbody");
     const miniTbody    = document.querySelector("#miniTable tbody");
@@ -364,7 +399,20 @@
     const barcodeInput = document.getElementById("barcodeInput");
     const statusEl     = document.getElementById("status");
 
-    // — Funciones auxiliares —
+    // Referencias para detalle de incidencia
+    const detailModal       = document.getElementById("incDetailModal");
+    const detailStateSelect = document.getElementById("detailStateSelect");
+    const detailChangeBtn   = document.getElementById("detailChangeStateBtn");
+    const detailCommentTxt  = document.getElementById("detailCommentInput");
+    const detailAddComment  = document.getElementById("detailAddCommentBtn");
+    const detailAttachments = document.getElementById("detailAttachments");
+    const detailFileInput   = document.getElementById("detailFileInput");
+    const detailUploadBtn   = document.getElementById("detailUploadBtn");
+    const detailTimeline    = document.getElementById("detailTimeline");
+    const detailCloseBtn    = document.getElementById("detailCloseBtn");
+    let currentIncId        = "";
+
+    // — Funciones auxiliares — (sin cambios)
     function clearStatus(){
       statusEl.innerText = "";
       statusEl.className = "";
@@ -388,7 +436,7 @@
       return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    // — Manejo de vistas —
+    // — Manejo de vistas — (sin cambios)
     function showView(v){
       ["view-escaneo","view-historial","view-incidencias"]
         .forEach(id =>
@@ -402,7 +450,7 @@
       loadIncidencias();
     };
 
-    // — Scanner widget —
+    // — Scanner widget — (sin cambios)
     modeSelect.addEventListener("change", ()=>{
       mode = modeSelect.value;
       document.getElementById("mode").innerHTML =
@@ -460,7 +508,7 @@
       }
     });
 
-    // — Carga y render del historial desde backend —
+    // — Carga y render del historial — (sin cambios)
     async function loadPage(page = 1){
       currentPage = page;
       let url = `https://servidor-backend-paquetes.onrender.com/scanner/all`
@@ -524,7 +572,6 @@
       const end   = Math.min(currentPage*pageSize, totalItems);
       counterEl.innerText = `Mostrando ${start}–${end} de ${totalItems} paquetes`;
 
-      // aplicación de búsqueda CLIENTE
       const filtered = tableData.filter(r=>
         !filterText || r.id.toLowerCase().includes(filterText)
       );
@@ -557,7 +604,7 @@
       nextPageBtn.disabled = currentPage === totalPages;
     }
 
-    // — Orden SERVER-SIDE al clickar cabeceras —
+    // — Orden y filtro — (sin cambios)
     document.querySelectorAll("#scanTable th[data-col]").forEach(th=>{
       th.addEventListener("click", ()=>{
         const c = th.dataset.col;
@@ -570,24 +617,18 @@
         loadPage(1);
       });
     });
-
-    // — Filtrado por estado → recarga —
     stateFilter.addEventListener("change", e=>{
       filterState = e.target.value;
       loadPage(1);
     });
-
-    // — Búsqueda CLIENTE sobre lo ya cargado —
     searchInput.addEventListener("input", e=>{
       filterText = e.target.value.toLowerCase();
       renderTable();
     });
-
-    // — Paginación —
     prevPageBtn.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
     nextPageBtn.addEventListener("click", ()=>{ const tp=Math.ceil(totalItems/pageSize); if(currentPage<tp) loadPage(currentPage+1); });
 
-    // — Incidencias y modal — (sin cambios en lógica)
+    // — Incidencias principal — (sin cambios)
     function attachRowClicks(sel){
       document.querySelector(sel).addEventListener("click", e=>{
         const id = e.target.dataset.id;
@@ -717,15 +758,131 @@
       });
     });
     incPrevBtn.addEventListener("click", ()=>{ if(incPage>1){ incPage--; renderIncTable(); }}); 
-    incNextBtn.addEventListener("click", ()=>{ const mp=Math.ceil(filteredInc().length/incPageSize); if(incPage<mp){ incPage++; renderIncTable(); }});
+    incNextBtn.addEventListener("click", ()=>{ const mp=Math.ceil(filteredInc().length/incPageSize); if(incPage<mp){ incPage++; renderIncTable(); }}); 
 
-    document.getElementById("view-incidencias").addEventListener("click", e=>{
-      if(e.target.matches(".view-inc")){
-        alert("Ver detalle de incidencia "+e.target.dataset.id);
+    // — Abrir modal de detalle y edición —
+    document.getElementById("view-incidencias").addEventListener("click", async e=>{
+      if(e.target.matches(".view-inc") || e.target.matches(".edit-inc")){
+        currentIncId = e.target.dataset.id;
+        try {
+          const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}`);
+          const inc = await res.json();
+          detailStateSelect.value = inc.estado;
+          detailAttachments.innerHTML = "";
+          inc.adjuntos.forEach(url=>{
+            const img = document.createElement("img");
+            img.src = url; img.style.width = "60px"; img.style.cursor = "pointer";
+            img.onclick = ()=> window.open(url, "_blank");
+            detailAttachments.appendChild(img);
+          });
+          renderDetailTimeline(inc.historial);
+          detailModal.style.display = "flex";
+        } catch {
+          showToast("No se pudo cargar la incidencia","error");
+        }
       }
-      if(e.target.matches(".edit-inc")){
-        alert("Editar estado de incidencia "+e.target.dataset.id);
+    });
+
+    // — Cambiar estado en detalle —
+    detailChangeBtn.addEventListener("click", async ()=>{
+      detailChangeBtn.disabled = true;
+      try {
+        const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}/estado`, {
+          method: "PUT",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ nuevo_estado: detailStateSelect.value })
+        });
+        if(!res.ok) throw await res.json();
+        showToast("Estado actualizado","success");
+        const incRes = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}`);
+        const inc    = await incRes.json();
+        renderDetailTimeline(inc.historial);
+      } catch(err) {
+        showToast(err.error||"Error al actualizar estado","error");
+      } finally {
+        detailChangeBtn.disabled = false;
       }
+    });
+
+    // — Agregar comentario en detalle —
+    detailAddComment.addEventListener("click", async ()=>{
+      detailAddComment.disabled = true;
+      try {
+        const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}/comentarios`, {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ comentario: detailCommentTxt.value })
+        });
+        if(!res.ok) throw await res.json();
+        showToast("Comentario agregado","success");
+        detailCommentTxt.value = "";
+        const incRes = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}`);
+        const inc    = await incRes.json();
+        renderDetailTimeline(inc.historial);
+      } catch(err){
+        showToast(err.error||"Error al agregar comentario","error");
+      } finally {
+        detailAddComment.disabled = false;
+      }
+    });
+
+    // — Subir nuevos adjuntos en detalle —
+    detailUploadBtn.addEventListener("click", async ()=>{
+      if(!detailFileInput.files.length) {
+        return showToast("Selecciona archivos","error");
+      }
+      detailUploadBtn.disabled = true;
+      try {
+        const form = new FormData();
+        Array.from(detailFileInput.files).forEach(f=> form.append("files", f));
+        const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}/adjuntos`, {
+          method: "POST",
+          body: form
+        });
+        if(!res.ok) throw await res.json();
+        showToast("Adjuntos subidos","success");
+        detailFileInput.value = "";
+        const incRes = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}`);
+        const inc    = await incRes.json();
+        detailAttachments.innerHTML = "";
+        inc.adjuntos.forEach(url=>{
+          const img = document.createElement("img");
+          img.src = url; img.style.width = "60px"; img.style.cursor = "pointer";
+          img.onclick = ()=> window.open(url,"_blank");
+          detailAttachments.appendChild(img);
+        });
+        renderDetailTimeline(inc.historial);
+      } catch(err){
+        showToast(err.error||"Error al subir adjuntos","error");
+      } finally {
+        detailUploadBtn.disabled = false;
+      }
+    });
+
+    // — Renderizar historial de detalle —
+    function renderDetailTimeline(historial){
+      historial.sort((a,b)=> new Date(a.fecha) - new Date(b.fecha));
+      detailTimeline.innerHTML = historial.map(ev=>{
+        if(ev.estado){
+          return `<div><strong>Estado:</strong> ${ev.estado} 
+                  <span style="font-size:0.8em; color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
+        }
+        if(ev.comentario){
+          return `<div><strong>Comentario:</strong> ${ev.comentario}
+                  <span style="font-size:0.8em; color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
+        }
+        if(ev.archivo){
+          return `<div><strong>Adjunto:</strong> 
+                  <a href="${ev.archivo}" target="_blank">Ver archivo</a>
+                  <span style="font-size:0.8em; color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
+        }
+        return "";
+      }).join("");
+    }
+
+    // — Cerrar modal de detalle —
+    detailCloseBtn.addEventListener("click", ()=>{
+      detailModal.style.display = "none";
     });
 
     // — Inicialización —

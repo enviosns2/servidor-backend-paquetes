@@ -1,13 +1,13 @@
 // routes/scanner.js
-const express    = require("express");
-const router     = express.Router();
-const fs         = require("fs");
-const path       = require("path");
-const multer     = require("multer");
+const express      = require("express");
+const router       = express.Router();
+const fs           = require("fs");
+const path         = require("path");
+const multer       = require("multer");
 const { ObjectId } = require("mongodb");
 
-// --- Asegurar carpeta de uploads ---
-const uploadDir = path.join(__dirname, "uploads");
+// --- Asegurar carpeta de uploads en el nivel raíz ---
+const uploadDir = path.join(__dirname, "../uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
@@ -38,7 +38,6 @@ router.post("/recibido", async (req, res) => {
     if (await col.findOne({ paquete_id })) {
       return res.status(400).json({ error: "El paquete ya existe con estado inicial." });
     }
-    // Guardamos fecha como Date()
     const fecha = new Date();
     const nuevo = {
       paquete_id,
@@ -191,30 +190,21 @@ router.get("/all", async (req, res) => {
     const estadosCol = global.db.collection("estados");
     const incCol     = global.db.collection("Incidencias");
 
-    // Parámetros de paginación
     const page     = Math.max(1, parseInt(req.query.page,     10) || 1);
     const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
 
-    // Filtro opcional por estado_actual
     const match = {};
     if (req.query.state) {
       match.estado_actual = req.query.state;
     }
 
-    // Pipeline:
-    // 1) $match
-    // 2) $addFields → convertir cualquier fecha-string y calcular lastFecha con $max
-    // 3) $sort por lastFecha DESC, luego por _id DESC
-    // 4) $skip + $limit para paginar
-    // 5) $project para conservar solo los campos necesarios
     const pipeline = [
       { $match: match },
       { $addFields: {
-          // reconvertir historial.fecha a Date si viniera como string
           historial: {
             $map: {
               input: "$historial",
-              as: "h",
+              as:   "h",
               in: {
                 estado: "$$h.estado",
                 fecha: {
@@ -244,19 +234,17 @@ router.get("/all", async (req, res) => {
       }
     ];
 
-    // Ejecutar agregación y conteo total
     const [docs, totalItems] = await Promise.all([
       estadosCol.aggregate(pipeline).toArray(),
       estadosCol.countDocuments(match)
     ]);
 
-    // Enriquecer con conteo de incidencias
     const items = await Promise.all(docs.map(async doc => {
       const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
       return {
-        paquete_id:       doc.paquete_id,
-        estado_actual:    doc.estado_actual,
-        historial:        doc.historial,
+        paquete_id:        doc.paquete_id,
+        estado_actual:     doc.estado_actual,
+        historial:         doc.historial,
         incidencias_count: cnt
       };
     }));
@@ -272,6 +260,7 @@ router.get("/all", async (req, res) => {
 // RUTAS DE INCIDENCIAS
 // ----------------------------------------
 
+// Crear incidencia con adjuntos iniciales
 router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
   const { paquete_id, tipo, descripcion } = req.body;
   if (!paquete_id || !tipo || !descripcion) {
@@ -282,14 +271,14 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
     const fecha      = new Date();
     const incId      = `${paquete_id}-IN`;
     const incidencia = {
-      _id: incId,
+      _id:           incId,
       paquete_id,
       tipo,
       descripcion,
-      estado: "Abierta",
+      estado:        "Abierta",
       fecha_creacion: fecha,
-      historial: [{ estado: "Abierta", fecha }],
-      adjuntos: (req.files || []).map(f => `/uploads/${f.filename}`)
+      historial:     [{ estado: "Abierta", fecha }],
+      adjuntos:      (req.files || []).map(f => `/uploads/${f.filename}`)
     };
     await collection.insertOne(incidencia);
     res.status(201).json({ message: "Incidencia creada.", id: incId });
@@ -299,6 +288,7 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
   }
 });
 
+// Listar todas las incidencias
 router.get("/incidencias", async (req, res) => {
   try {
     const collection  = global.db.collection("Incidencias");
@@ -310,6 +300,7 @@ router.get("/incidencias", async (req, res) => {
   }
 });
 
+// Obtener detalle de una incidencia
 router.get("/incidencias/:id", async (req, res) => {
   try {
     const collection = global.db.collection("Incidencias");
@@ -322,37 +313,87 @@ router.get("/incidencias/:id", async (req, res) => {
   }
 });
 
-router.put("/incidencias/:id", async (req, res) => {
-  const { nuevo_estado, comentario } = req.body;
-  if (!nuevo_estado && !comentario) {
-    return res.status(400).json({ error: "Debe enviar 'nuevo_estado' o 'comentario'." });
+// Cambiar estado de una incidencia
+router.put("/incidencias/:id/estado", async (req, res) => {
+  const posibles = ["Abierta","En proceso","Resuelta","Cerrada","Rechazada"];
+  const { nuevo_estado } = req.body;
+  if (!nuevo_estado || !posibles.includes(nuevo_estado)) {
+    return res.status(400).json({ error: "Estado inválido." });
   }
   try {
-    const collection = global.db.collection("Incidencias");
-    const updates    = {};
-    const pushOps    = [];
-    const fecha      = new Date();
-
-    if (nuevo_estado) {
-      updates.estado = nuevo_estado;
-      pushOps.push({ estado: nuevo_estado, fecha });
-    }
-    if (comentario) {
-      pushOps.push({ comentario, fecha });
-    }
-
-    await collection.updateOne(
+    const col   = global.db.collection("Incidencias");
+    const fecha = new Date();
+    const result = await col.updateOne(
       { _id: req.params.id },
       {
-        $set: updates,
-        $push: { historial: { $each: pushOps } }
+        $set:  { estado: nuevo_estado },
+        $push: { historial: { estado: nuevo_estado, fecha } }
       }
     );
-    res.json({ message: "Incidencia actualizada." });
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: "Incidencia no encontrada." });
+    }
+    res.json({ message: "Estado de incidencia actualizado." });
   } catch (err) {
-    console.error("Error al actualizar incidencia:", err);
+    console.error("Error al cambiar estado de incidencia:", err);
     res.status(500).json({ error: "Error interno al actualizar incidencia." });
   }
 });
+
+// Añadir comentario a una incidencia
+router.post("/incidencias/:id/comentarios", async (req, res) => {
+  const { comentario } = req.body;
+  if (!comentario || !comentario.trim()) {
+    return res.status(400).json({ error: "Comentario vacío." });
+  }
+  try {
+    const col   = global.db.collection("Incidencias");
+    const fecha = new Date();
+    const result = await col.updateOne(
+      { _id: req.params.id },
+      { $push: { historial: { comentario: comentario.trim(), fecha } } }
+    );
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: "Incidencia no encontrada." });
+    }
+    res.json({ message: "Comentario agregado a incidencia." });
+  } catch (err) {
+    console.error("Error al agregar comentario:", err);
+    res.status(500).json({ error: "Error interno al actualizar incidencia." });
+  }
+});
+
+// Subir adjuntos a una incidencia existente
+router.post(
+  "/incidencias/:id/adjuntos",
+  upload.array("adjuntos", 10),
+  async (req, res) => {
+    try {
+      const col = global.db.collection("Incidencias");
+      const inc = await col.findOne({ _id: req.params.id });
+      if (!inc) return res.status(404).json({ error: "Incidencia no encontrada." });
+
+      const fecha = new Date();
+      const nuevosUrls = (req.files || []).map(f => `/uploads/${f.filename}`);
+
+      await col.updateOne(
+        { _id: req.params.id },
+        {
+          $push: {
+            adjuntos: { $each: nuevosUrls },
+            historial: {
+              $each: nuevosUrls.map(url => ({ archivo: url, fecha }))
+            }
+          }
+        }
+      );
+
+      res.json({ message: "Adjuntos subidos y registrados en historial." });
+    } catch (err) {
+      console.error("Error al subir adjuntos:", err);
+      res.status(500).json({ error: "Error interno al subir adjuntos." });
+    }
+  }
+);
 
 module.exports = router;
