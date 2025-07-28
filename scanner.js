@@ -203,17 +203,37 @@ router.get("/all", async (req, res) => {
 
     // Pipeline:
     // 1) $match
-    // 2) $addFields → lastFecha = máximo de todas las fechas en historial
-    // 3) $sort por lastFecha DESC
+    // 2) $addFields → convertir cualquier fecha-string y calcular lastFecha con $max
+    // 3) $sort por lastFecha DESC, luego por _id DESC
     // 4) $skip + $limit para paginar
     // 5) $project para conservar solo los campos necesarios
     const pipeline = [
       { $match: match },
       { $addFields: {
+          // reconvertir historial.fecha a Date si viniera como string
+          historial: {
+            $map: {
+              input: "$historial",
+              as: "h",
+              in: {
+                estado: "$$h.estado",
+                fecha: {
+                  $cond: [
+                    { $eq: [{ $type: "$$h.fecha" }, "string"] },
+                    { $toDate: "$$h.fecha" },
+                    "$$h.fecha"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      { $addFields: {
           lastFecha: { $max: "$historial.fecha" }
         }
       },
-      { $sort: { lastFecha: -1 } },
+      { $sort: { lastFecha: -1, _id: -1 } },
       { $skip: (page - 1) * pageSize },
       { $limit: pageSize },
       { $project: {
