@@ -46,8 +46,8 @@ const client = new MongoClient(uri);
 // Middleware para servir archivos estáticos desde la carpeta "public"
 app.use(express.static(path.join(__dirname, "public")));
 
-// Middleware para servir las imágenes/documentos subidos en /uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Servir /uploads desde public/uploads (asegura que los adjuntos sean accesibles)
+app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
 // Ruta de prueba para confirmar que el servidor está funcionando
 app.get("/", (req, res) => {

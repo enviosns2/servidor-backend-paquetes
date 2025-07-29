@@ -6,10 +6,10 @@ const path         = require("path");
 const multer       = require("multer");
 const { ObjectId } = require("mongodb");
 
-// --- Asegurar carpeta de uploads en el nivel raíz ---
-const uploadDir = path.join(__dirname, "../uploads");
+// --- Asegurar carpeta de uploads dentro de public ---
+const uploadDir = path.join(__dirname, "public", "uploads");
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 // --- Configuración de Multer para adjuntos ---
