@@ -32,6 +32,7 @@ router.put("/incidencias/:id", async (req, res) => {
     res.status(500).json({ error: "Error interno al actualizar incidencia." });
   }
 });
+
 // routes/scanner.js
 const express      = require("express");
 const router       = express.Router();
@@ -39,6 +40,41 @@ const fs           = require("fs");
 const path         = require("path");
 const multer       = require("multer");
 const { ObjectId } = require("mongodb");
+
+// Actualizar estado y/o comentario de una incidencia en un solo request (debe ir después de inicializar router)
+router.put("/incidencias/:id", async (req, res) => {
+  const { nuevo_estado, comentario } = req.body;
+  if (!nuevo_estado && (!comentario || !comentario.trim())) {
+    return res.status(400).json({ error: "Se requiere al menos un campo a actualizar (nuevo_estado o comentario)." });
+  }
+  try {
+    const col = global.db.collection("Incidencias");
+    const fecha = new Date();
+    const update = {};
+    if (nuevo_estado) {
+      update.$set = { estado: nuevo_estado };
+      update.$push = { historial: { estado: nuevo_estado, fecha } };
+    }
+    if (comentario && comentario.trim()) {
+      if (!update.$push) update.$push = {};
+      update.$push.historial = update.$push.historial
+        ? { $each: [update.$push.historial, { comentario: comentario.trim(), fecha }] }
+        : { comentario: comentario.trim(), fecha };
+    }
+    const result = await col.updateOne(
+      { _id: req.params.id },
+      update
+    );
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: "Incidencia no encontrada." });
+    }
+    const updated = await col.findOne({ _id: req.params.id });
+    res.json({ message: "Incidencia actualizada.", incidencia: updated });
+  } catch (err) {
+    console.error("Error al actualizar incidencia:", err);
+    res.status(500).json({ error: "Error interno al actualizar incidencia." });
+  }
+});
 
 // --- Asegurar carpeta de uploads dentro de public ---
 const uploadDir = path.join(__dirname, "public", "uploads");
