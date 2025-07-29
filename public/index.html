@@ -750,15 +750,30 @@
           const res=await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}`);
           const inc=await res.json();
           detailStateSelect.value=inc.estado;
-          detailAttachments.innerHTML="";
-          inc.adjuntos.forEach(url=>{
-            const img=document.createElement("img");
-            img.src=url;
-            img.onclick=()=>window.open(url,"_blank");
-            detailAttachments.appendChild(img);
-          });
+          detailAttachments.innerHTML = "";
+          if (inc.adjuntos && inc.adjuntos.length > 0) {
+            inc.adjuntos.forEach(url => {
+              const ext = url.split('.').pop().toLowerCase();
+              if (["jpg","jpeg","png","gif","bmp","webp"].includes(ext)) {
+                const img = document.createElement("img");
+                img.src = url;
+                img.onclick = () => window.open(url, "_blank");
+                img.title = "Ver adjunto";
+                detailAttachments.appendChild(img);
+              } else {
+                const link = document.createElement("a");
+                link.href = url;
+                link.target = "_blank";
+                link.innerText = "Documento";
+                link.style.margin = "4px";
+                detailAttachments.appendChild(link);
+              }
+            });
+          } else {
+            detailAttachments.innerHTML = '<span style="color:#888;">Sin adjuntos</span>';
+          }
           renderDetailTimeline(inc.historial);
-          detailModal.style.display="flex";
+          detailModal.style.display = "flex";
         } catch{
           showToast("No se pudo cargar la incidencia","error");
         }
@@ -804,14 +819,27 @@
 
     function renderDetailTimeline(historial){
       historial.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
-      detailTimeline.innerHTML=historial.map(ev=>{
-        if(ev.estado){
-          return `<div><strong>Estado:</strong> ${ev.estado} <span style="font-size:0.8em;color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
+      detailTimeline.innerHTML = historial.map(ev => {
+        let html = '';
+        if (ev.estado) {
+          html += `<div><strong>Estado:</strong> ${ev.estado} <span style="font-size:0.8em;color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
         }
-        if(ev.comentario){
-          return `<div><strong>Comentario:</strong> ${ev.comentario} <span style="font-size:0.8em;color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
+        if (ev.comentario) {
+          html += `<div><strong>Comentario:</strong> ${ev.comentario} <span style="font-size:0.8em;color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
         }
-        return "";
+        if (ev.adjuntos && Array.isArray(ev.adjuntos) && ev.adjuntos.length > 0) {
+          html += `<div><strong>Adjuntos:</strong> `;
+          ev.adjuntos.forEach(url => {
+            const ext = url.split('.').pop().toLowerCase();
+            if (["jpg","jpeg","png","gif","bmp","webp"].includes(ext)) {
+              html += `<img src="${url}" style="width:50px;vertical-align:middle;margin:2px;cursor:pointer;" onclick="window.open('${url}','_blank')" title="Ver adjunto" />`;
+            } else {
+              html += `<a href="${url}" target="_blank" style="margin:2px;">Documento</a>`;
+            }
+          });
+          html += ` <span style=\"font-size:0.8em;color:#666;\">${formatDateTime(ev.fecha)}</span></div>`;
+        }
+        return html;
       }).join("");
     }
 

@@ -376,19 +376,22 @@ router.post(
       const fecha = new Date();
       const nuevosUrls = (req.files || []).map(f => `/uploads/${f.filename}`);
 
+      // Guardar adjuntos en el array principal y en el historial como evento de adjunto
       await col.updateOne(
         { _id: req.params.id },
         {
           $push: {
             adjuntos: { $each: nuevosUrls },
             historial: {
-              $each: nuevosUrls.map(url => ({ archivo: url, fecha }))
+              $each: nuevosUrls.map(url => ({ adjuntos: [url], fecha }))
             }
           }
         }
       );
 
-      res.json({ message: "Adjuntos subidos y registrados en historial." });
+      // Devolver la incidencia actualizada
+      const updated = await col.findOne({ _id: req.params.id });
+      res.json({ message: "Adjuntos subidos y registrados en historial.", incidencia: updated });
     } catch (err) {
       console.error("Error al subir adjuntos:", err);
       res.status(500).json({ error: "Error interno al subir adjuntos." });
