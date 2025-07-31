@@ -576,11 +576,26 @@
 
       const filtered=tableData.filter(r=>!filterText||r.id.toLowerCase().includes(filterText));
 
+      // Encabezado con checkbox
+      scanTbody.parentElement.querySelector("thead")?.remove();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>
+        <th style='width:32px;'><input type='checkbox' id='selectAllPaqChk'></th>
+        <th data-col='time'>Fecha y hora</th>
+        <th data-col='id'>Paquete</th>
+        <th data-col='new'>Estado nuevo</th>
+        <th data-col='prev'>Estado anterior</th>
+        <th data-col='inc'>Incidencias</th>
+        <th>Acciones</th>
+      </tr>`;
+      scanTbody.parentElement.insertBefore(thead, scanTbody);
+
       scanTbody.innerHTML="";
       filtered.forEach(r=>{
         const tr=document.createElement("tr");
         // Checkbox de selección
         const tdSel=document.createElement("td");
+        tdSel.style='text-align:center;';
         tdSel.innerHTML = `<input type='checkbox' class='sel-paq' data-id='${r.id}' ${selectedPaquetes.has(r.id)?'checked':''}>`;
         tr.appendChild(tdSel);
         ["time","id","new","prev"].forEach(k=>{
@@ -604,10 +619,18 @@
         controls.style = "margin-bottom:8px;";
         scanTbody.parentElement.parentElement.insertBefore(controls, scanTbody.parentElement);
       }
-      controls.innerHTML = `<button id='selectAllPaq'>Seleccionar todos</button> <button id='deleteSelectedPaq'>Eliminar seleccionados</button> <span id='paqSelCount'></span>`;
+      controls.innerHTML = `<button id='selectAllPaq'>${selectedPaquetes.size===filtered.length&&filtered.length>0?"Deseleccionar todos":"Seleccionar todos"}</button> <button id='deleteSelectedPaq'>Eliminar seleccionados</button> <span id='paqSelCount'></span>`;
       document.getElementById("selectAllPaq").onclick = ()=>{
-        filtered.forEach(r=>selectedPaquetes.add(r.id));
+        if(selectedPaquetes.size===filtered.length&&filtered.length>0){
+          filtered.forEach(r=>selectedPaquetes.delete(r.id));
+        }else{
+          filtered.forEach(r=>selectedPaquetes.add(r.id));
+        }
         renderTable();
+      };
+      document.getElementById("selectAllPaqChk").checked = selectedPaquetes.size===filtered.length&&filtered.length>0;
+      document.getElementById("selectAllPaqChk").onclick = ()=>{
+        document.getElementById("selectAllPaq").click();
       };
       document.getElementById("deleteSelectedPaq").onclick = async ()=>{
         if(selectedPaquetes.size===0) return showToast("No hay paquetes seleccionados","error");
@@ -637,6 +660,7 @@
           if(e.target.checked) selectedPaquetes.add(e.target.dataset.id);
           else selectedPaquetes.delete(e.target.dataset.id);
           document.getElementById("paqSelCount").innerText = selectedPaquetes.size>0?`${selectedPaquetes.size} seleccionados`:'';
+          document.getElementById("selectAllPaqChk").checked = selectedPaquetes.size===filtered.length&&filtered.length>0;
         });
       });
 
@@ -657,11 +681,27 @@
       const start=(incPage-1)*incPageSize+1;
       const end=Math.min(incPage*incPageSize, all.length);
       incPageInfoEl.innerText=`Mostrando ${start}–${end} de ${all.length} incidencias`;
+
+      // Encabezado con checkbox
+      incTbody.parentElement.querySelector("thead")?.remove();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>
+        <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
+        <th data-col='_id'>ID</th>
+        <th data-col='paquete_id'>Paquete</th>
+        <th data-col='tipo'>Tipo</th>
+        <th data-col='estado'>Estado</th>
+        <th data-col='fecha_creacion'>Fecha creación</th>
+        <th>Acciones</th>
+      </tr>`;
+      incTbody.parentElement.insertBefore(thead, incTbody);
+
       incTbody.innerHTML="";
       all.slice(start-1,end).forEach(i=>{
         const tr=document.createElement("tr");
         // Checkbox de selección
         const tdSel=document.createElement("td");
+        tdSel.style='text-align:center;';
         tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
         tr.appendChild(tdSel);
         ["_id","paquete_id","tipo"].forEach(k=>{
@@ -688,10 +728,18 @@
         controls.style = "margin-bottom:8px;";
         incTbody.parentElement.parentElement.insertBefore(controls, incTbody.parentElement);
       }
-      controls.innerHTML = `<button id='selectAllInc'>Seleccionar todos</button> <button id='deleteSelectedInc'>Eliminar seleccionados</button> <span id='incSelCount'></span>`;
+      controls.innerHTML = `<button id='selectAllInc'>${selectedIncidencias.size===all.length&&all.length>0?"Deseleccionar todos":"Seleccionar todos"}</button> <button id='deleteSelectedInc'>Eliminar seleccionados</button> <span id='incSelCount'></span>`;
       document.getElementById("selectAllInc").onclick = ()=>{
-        all.forEach(i=>selectedIncidencias.add(i._id));
+        if(selectedIncidencias.size===all.length&&all.length>0){
+          all.forEach(i=>selectedIncidencias.delete(i._id));
+        }else{
+          all.forEach(i=>selectedIncidencias.add(i._id));
+        }
         renderIncTable();
+      };
+      document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
+      document.getElementById("selectAllIncChk").onclick = ()=>{
+        document.getElementById("selectAllInc").click();
       };
       document.getElementById("deleteSelectedInc").onclick = async ()=>{
         if(selectedIncidencias.size===0) return showToast("No hay incidencias seleccionadas","error");
@@ -721,6 +769,7 @@
           if(e.target.checked) selectedIncidencias.add(e.target.dataset.id);
           else selectedIncidencias.delete(e.target.dataset.id);
           document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
+          document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
         });
       });
 
@@ -873,11 +922,27 @@
       const start=(incPage-1)*incPageSize+1;
       const end=Math.min(incPage*incPageSize, all.length);
       incPageInfoEl.innerText=`Mostrando ${start}–${end} de ${all.length} incidencias`;
+
+      // Encabezado con checkbox
+      incTbody.parentElement.querySelector("thead")?.remove();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>
+        <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
+        <th data-col='_id'>ID</th>
+        <th data-col='paquete_id'>Paquete</th>
+        <th data-col='tipo'>Tipo</th>
+        <th data-col='estado'>Estado</th>
+        <th data-col='fecha_creacion'>Fecha creación</th>
+        <th>Acciones</th>
+      </tr>`;
+      incTbody.parentElement.insertBefore(thead, incTbody);
+
       incTbody.innerHTML="";
       all.slice(start-1,end).forEach(i=>{
         const tr=document.createElement("tr");
         // Checkbox de selección
         const tdSel=document.createElement("td");
+        tdSel.style='text-align:center;';
         tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
         tr.appendChild(tdSel);
         ["_id","paquete_id","tipo"].forEach(k=>{
