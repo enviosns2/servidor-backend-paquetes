@@ -475,104 +475,104 @@
       showView("view-reportes");
       // Aquí se cargarán los datos de reportes en siguientes pasos
     };
-</script>
+  </script>
 
-<!-- Vista de Reportes -->
-<div id="view-reportes" style="display:none;padding:24px;">
-  <h2>Reportes y KPIs</h2>
-  <!-- Filtros globales -->
-  <div id="reportes-filtros" style="display:flex;gap:16px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
-    <label>Rango de fechas:
-      <button id="repHoy">Hoy</button>
-      <button id="repSemana">Última semana</button>
-      <button id="repMes">Último mes</button>
-      <input type="date" id="repFechaIni"> a <input type="date" id="repFechaFin">
-    </label>
-    <label>Ruta/zona:
-      <select id="repRuta">
-        <option value="">Todas</option>
-        <!-- Opciones dinámicas -->
-      </select>
-    </label>
+  <!-- Vista de Reportes (fuera del <script> y dentro del <body>) -->
+  <div id="view-reportes" style="display:none;padding:24px;">
+    <h2>Reportes y KPIs</h2>
+    <!-- Filtros globales -->
+    <div id="reportes-filtros" style="display:flex;gap:16px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+      <label>Rango de fechas:
+        <button id="repHoy">Hoy</button>
+        <button id="repSemana">Última semana</button>
+        <button id="repMes">Último mes</button>
+        <input type="date" id="repFechaIni"> a <input type="date" id="repFechaFin">
+      </label>
+      <label>Ruta/zona:
+        <select id="repRuta">
+          <option value="">Todas</option>
+          <!-- Opciones dinámicas -->
+        </select>
+      </label>
+    </div>
+    <!-- Panel de KPIs -->
+    <div id="reportes-kpis" style="display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap;">
+      <div class="kpi-card" id="kpi-total-escaneos">
+        <div class="kpi-title">Total de escaneos</div>
+        <div class="kpi-value">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-entregas-tiempo">
+        <div class="kpi-title">% entregas a tiempo</div>
+        <div class="kpi-value">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-tiempo-transito">
+        <div class="kpi-title">Tiempo medio en tránsito (h)</div>
+        <div class="kpi-value">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-incidencias">
+        <div class="kpi-title">% de incidencias</div>
+        <div class="kpi-value">-</div>
+      </div>
+    </div>
+    <!-- Gráficos de tendencias -->
+    <div id="reportes-graficos" style="display:flex;gap:32px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:320px;">
+        <h3>Volumen de escaneos diarios</h3>
+        <canvas id="graf-escaneos"></canvas>
+      </div>
+      <div style="flex:1;min-width:320px;">
+        <h3>Entregas a tiempo vs. retrasadas</h3>
+        <canvas id="graf-entregas"></canvas>
+      </div>
+    </div>
+    <!-- Distribución de estados -->
+    <div id="reportes-estados" style="margin:32px 0;display:flex;gap:32px;flex-wrap:wrap;">
+      <div style="flex:2;min-width:320px;">
+        <h3>Distribución de estados</h3>
+        <canvas id="graf-estados"></canvas>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <h3>Proporción de fases</h3>
+        <canvas id="graf-estados-pie"></canvas>
+      </div>
+    </div>
+    <!-- Análisis de incidencias -->
+    <div id="reportes-incidencias" style="display:flex;gap:32px;flex-wrap:wrap;">
+      <div style="flex:2;min-width:320px;">
+        <h3>Incidencias por tipo</h3>
+        <canvas id="graf-incidencias"></canvas>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <h3>Top 10 rutas/fases con más incidencias</h3>
+        <table id="tabla-top-incidencias" style="width:100%;border-collapse:collapse;">
+          <thead><tr><th>Ruta/Fase</th><th>Total</th><th>%</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Tabla de datos detallada -->
+    <div style="margin-top:32px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h3>Detalle de movimientos</h3>
+        <button id="exportarDatos">Exportar</button>
+      </div>
+      <div style="overflow-x:auto;max-height:400px;">
+        <table id="tabla-detalle-reportes" style="width:100%;border-collapse:collapse;">
+          <thead style="position:sticky;top:0;background:#fff;z-index:2;">
+            <tr>
+              <th data-col="fecha">Fecha y hora</th>
+              <th data-col="paquete">Paquete</th>
+              <th data-col="nuevo">Estado nuevo</th>
+              <th data-col="previo">Estado anterior</th>
+              <th data-col="incidencias">Incidencias</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="reportes-paginacion" style="margin-top:8px;"></div>
+    </div>
   </div>
-  <!-- Panel de KPIs -->
-  <div id="reportes-kpis" style="display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap;">
-    <div class="kpi-card" id="kpi-total-escaneos">
-      <div class="kpi-title">Total de escaneos</div>
-      <div class="kpi-value">-</div>
-    </div>
-    <div class="kpi-card" id="kpi-entregas-tiempo">
-      <div class="kpi-title">% entregas a tiempo</div>
-      <div class="kpi-value">-</div>
-    </div>
-    <div class="kpi-card" id="kpi-tiempo-transito">
-      <div class="kpi-title">Tiempo medio en tránsito (h)</div>
-      <div class="kpi-value">-</div>
-    </div>
-    <div class="kpi-card" id="kpi-incidencias">
-      <div class="kpi-title">% de incidencias</div>
-      <div class="kpi-value">-</div>
-    </div>
-  </div>
-  <!-- Gráficos de tendencias -->
-  <div id="reportes-graficos" style="display:flex;gap:32px;flex-wrap:wrap;">
-    <div style="flex:1;min-width:320px;">
-      <h3>Volumen de escaneos diarios</h3>
-      <canvas id="graf-escaneos"></canvas>
-    </div>
-    <div style="flex:1;min-width:320px;">
-      <h3>Entregas a tiempo vs. retrasadas</h3>
-      <canvas id="graf-entregas"></canvas>
-    </div>
-  </div>
-  <!-- Distribución de estados -->
-  <div id="reportes-estados" style="margin:32px 0;display:flex;gap:32px;flex-wrap:wrap;">
-    <div style="flex:2;min-width:320px;">
-      <h3>Distribución de estados</h3>
-      <canvas id="graf-estados"></canvas>
-    </div>
-    <div style="flex:1;min-width:220px;">
-      <h3>Proporción de fases</h3>
-      <canvas id="graf-estados-pie"></canvas>
-    </div>
-  </div>
-  <!-- Análisis de incidencias -->
-  <div id="reportes-incidencias" style="display:flex;gap:32px;flex-wrap:wrap;">
-    <div style="flex:2;min-width:320px;">
-      <h3>Incidencias por tipo</h3>
-      <canvas id="graf-incidencias"></canvas>
-    </div>
-    <div style="flex:1;min-width:220px;">
-      <h3>Top 10 rutas/fases con más incidencias</h3>
-      <table id="tabla-top-incidencias" style="width:100%;border-collapse:collapse;">
-        <thead><tr><th>Ruta/Fase</th><th>Total</th><th>%</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-  <!-- Tabla de datos detallada -->
-  <div style="margin-top:32px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <h3>Detalle de movimientos</h3>
-      <button id="exportarDatos">Exportar</button>
-    </div>
-    <div style="overflow-x:auto;max-height:400px;">
-      <table id="tabla-detalle-reportes" style="width:100%;border-collapse:collapse;">
-        <thead style="position:sticky;top:0;background:#fff;z-index:2;">
-          <tr>
-            <th data-col="fecha">Fecha y hora</th>
-            <th data-col="paquete">Paquete</th>
-            <th data-col="nuevo">Estado nuevo</th>
-            <th data-col="previo">Estado anterior</th>
-            <th data-col="incidencias">Incidencias</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <div id="reportes-paginacion" style="margin-top:8px;"></div>
-  </div>
-</div>
 
     // — Scanner widget —
     modeSelect.addEventListener("change", ()=>{
