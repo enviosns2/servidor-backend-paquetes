@@ -335,9 +335,9 @@
     <div class="modal-content">
       <span class="close-icon" id="detailCloseIcon">&times;</span>
       <h2>Detalle de Incidencia</h2>
-      <div style="display: flex; gap: 16px; min-width: 340px;">
+      <div style="display: flex; gap: 16px; min-width: 340px; max-width: 700px;">
         <!-- Columna izquierda: Cambios/Historial -->
-        <div style="flex:1; min-width: 160px;">
+        <div style="flex:1; min-width: 180px; max-width: 320px; display: flex; flex-direction: column;">
           <label for="detailStateSelect">Estado</label>
           <select id="detailStateSelect">
             <option>Abierta</option>
@@ -347,18 +347,18 @@
             <option>Rechazada</option>
           </select>
           <label>Adjuntos existentes</label>
-          <div id="detailAttachments"></div>
+          <div id="detailAttachments" style="margin-bottom:8px;"></div>
           <label for="detailFileInput">Subir nuevos adjuntos</label>
-          <input type="file" id="detailFileInput" multiple />
+          <input type="file" id="detailFileInput" multiple style="margin-bottom:8px;" />
           <h3 style="margin-top:12px;">Historial de cambios</h3>
-          <div id="detailTimeline" style="max-height:200px; overflow-y:auto; border:1px solid #eee; padding:4px;"></div>
+          <div id="detailTimeline" style="flex:1; min-height:120px; max-height:220px; overflow-y:auto; border:1px solid #eee; padding:4px; background:#fafbfc;"></div>
         </div>
         <!-- Columna derecha: Comentarios -->
-        <div style="flex:1; min-width: 160px; border-left:1px solid #eee; padding-left:12px;">
+        <div style="flex:1; min-width: 180px; max-width: 320px; border-left:1px solid #eee; padding-left:12px; display: flex; flex-direction: column;">
           <h3>Comentarios</h3>
-          <div id="detailComments" style="max-height:200px; overflow-y:auto; margin-bottom:8px;"></div>
+          <div id="detailComments" style="flex:1; min-height:120px; max-height:220px; overflow-y:auto; margin-bottom:8px; background:#fafbfc; border:1px solid #eee; padding:4px;"></div>
           <label for="detailCommentInput">Nuevo comentario</label>
-          <textarea id="detailCommentInput"></textarea>
+          <textarea id="detailCommentInput" style="resize:vertical; min-height:40px; max-height:80px;"></textarea>
         </div>
       </div>
       <div class="buttons">
