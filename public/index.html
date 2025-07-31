@@ -398,6 +398,10 @@
     let incPage      = 1;
     let incPageSize  = 10;
 
+    // --- Selección múltiple de paquetes ---
+    let selectedPaquetes = new Set();
+    let selectedIncidencias = new Set();
+
     // — Referencias DOM —
     const counterEl    = document.getElementById("counter");
     const scanTbody    = document.querySelector("#scanTable tbody");
@@ -575,6 +579,10 @@
       scanTbody.innerHTML="";
       filtered.forEach(r=>{
         const tr=document.createElement("tr");
+        // Checkbox de selección
+        const tdSel=document.createElement("td");
+        tdSel.innerHTML = `<input type='checkbox' class='sel-paq' data-id='${r.id}' ${selectedPaquetes.has(r.id)?'checked':''}>`;
+        tr.appendChild(tdSel);
         ["time","id","new","prev"].forEach(k=>{
           const td=document.createElement("td");
           td.innerText=r[k]; tr.appendChild(td);
@@ -588,10 +596,137 @@
         scanTbody.appendChild(tr);
       });
 
+      // Controles de selección múltiple
+      let controls = document.getElementById("multiPaqControls");
+      if(!controls){
+        controls = document.createElement("div");
+        controls.id = "multiPaqControls";
+        controls.style = "margin-bottom:8px;";
+        scanTbody.parentElement.parentElement.insertBefore(controls, scanTbody.parentElement);
+      }
+      controls.innerHTML = `<button id='selectAllPaq'>Seleccionar todos</button> <button id='deleteSelectedPaq'>Eliminar seleccionados</button> <span id='paqSelCount'></span>`;
+      document.getElementById("selectAllPaq").onclick = ()=>{
+        filtered.forEach(r=>selectedPaquetes.add(r.id));
+        renderTable();
+      };
+      document.getElementById("deleteSelectedPaq").onclick = async ()=>{
+        if(selectedPaquetes.size===0) return showToast("No hay paquetes seleccionados","error");
+        if(!confirm(`¿Eliminar ${selectedPaquetes.size} paquetes?`)) return;
+        const password = prompt("Introduce la contraseña para eliminar los paquetes:");
+        if(!password) return;
+        let ok=0, fail=0;
+        for(const id of selectedPaquetes){
+          try{
+            const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/paquetes/${id}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password })
+            });
+            if(res.ok) ok++; else fail++;
+          }catch{ fail++; }
+        }
+        showToast(`Eliminados: ${ok}, Fallidos: ${fail}`,(fail===0?"success":"error"));
+        selectedPaquetes.clear();
+        loadPage(currentPage);
+      };
+      document.getElementById("paqSelCount").innerText = selectedPaquetes.size>0?`${selectedPaquetes.size} seleccionados`:'';
+
+      // Checkbox listeners
+      scanTbody.querySelectorAll(".sel-paq").forEach(cb=>{
+        cb.addEventListener("change",e=>{
+          if(e.target.checked) selectedPaquetes.add(e.target.dataset.id);
+          else selectedPaquetes.delete(e.target.dataset.id);
+          document.getElementById("paqSelCount").innerText = selectedPaquetes.size>0?`${selectedPaquetes.size} seleccionados`:'';
+        });
+      });
+
       const totalPages=Math.max(1,Math.ceil(totalItems/pageSize));
       pageInfo.innerText=`Página ${currentPage} de ${totalPages}`;
       prevPageBtn.disabled=currentPage===1;
       nextPageBtn.disabled=currentPage===totalPages;
+    }
+
+    // --- Selección múltiple de incidencias ---
+    function renderIncTable(){
+      const all=filteredInc().sort((a,b)=>{
+        const av=a[incSortCol], bv=b[incSortCol];
+        if(av<bv) return incSortAsc?-1:1;
+        if(av>bv) return incSortAsc?1:-1;
+        return 0;
+      });
+      const start=(incPage-1)*incPageSize+1;
+      const end=Math.min(incPage*incPageSize, all.length);
+      incPageInfoEl.innerText=`Mostrando ${start}–${end} de ${all.length} incidencias`;
+      incTbody.innerHTML="";
+      all.slice(start-1,end).forEach(i=>{
+        const tr=document.createElement("tr");
+        // Checkbox de selección
+        const tdSel=document.createElement("td");
+        tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
+        tr.appendChild(tdSel);
+        ["_id","paquete_id","tipo"].forEach(k=>{
+          const td=document.createElement("td");
+          td.innerText=i[k]; tr.appendChild(td);
+        });
+        const tdEst=document.createElement("td");
+        tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
+        tr.appendChild(tdEst);
+        const tdDate=document.createElement("td");
+        tdDate.innerText=formatDateTime(i.fecha_creacion);
+        tr.appendChild(tdDate);
+        const tdA=document.createElement("td");
+        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">Ver</button> <button class="edit-inc" data-id="${i._id}">Editar</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
+        tr.appendChild(tdA);
+        incTbody.appendChild(tr);
+      });
+
+      // Controles de selección múltiple
+      let controls = document.getElementById("multiIncControls");
+      if(!controls){
+        controls = document.createElement("div");
+        controls.id = "multiIncControls";
+        controls.style = "margin-bottom:8px;";
+        incTbody.parentElement.parentElement.insertBefore(controls, incTbody.parentElement);
+      }
+      controls.innerHTML = `<button id='selectAllInc'>Seleccionar todos</button> <button id='deleteSelectedInc'>Eliminar seleccionados</button> <span id='incSelCount'></span>`;
+      document.getElementById("selectAllInc").onclick = ()=>{
+        all.forEach(i=>selectedIncidencias.add(i._id));
+        renderIncTable();
+      };
+      document.getElementById("deleteSelectedInc").onclick = async ()=>{
+        if(selectedIncidencias.size===0) return showToast("No hay incidencias seleccionadas","error");
+        if(!confirm(`¿Eliminar ${selectedIncidencias.size} incidencias?`)) return;
+        const password = prompt("Introduce la contraseña para eliminar las incidencias:");
+        if(!password) return;
+        let ok=0, fail=0;
+        for(const id of selectedIncidencias){
+          try{
+            const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${id}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password })
+            });
+            if(res.ok) ok++; else fail++;
+          }catch{ fail++; }
+        }
+        showToast(`Eliminadas: ${ok}, Fallidas: ${fail}`,(fail===0?"success":"error"));
+        selectedIncidencias.clear();
+        loadIncidencias();
+      };
+      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
+
+      // Checkbox listeners
+      incTbody.querySelectorAll(".sel-inc").forEach(cb=>{
+        cb.addEventListener("change",e=>{
+          if(e.target.checked) selectedIncidencias.add(e.target.dataset.id);
+          else selectedIncidencias.delete(e.target.dataset.id);
+          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
+        });
+      });
+
+      const maxP=Math.max(1, Math.ceil(filteredInc().length/incPageSize));
+      incPrevBtn.disabled=incPage===1;
+      incNextBtn.disabled=incPage===maxP;
     }
 
     // Manejo de eliminación de paquete
@@ -741,6 +876,10 @@
       incTbody.innerHTML="";
       all.slice(start-1,end).forEach(i=>{
         const tr=document.createElement("tr");
+        // Checkbox de selección
+        const tdSel=document.createElement("td");
+        tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
+        tr.appendChild(tdSel);
         ["_id","paquete_id","tipo"].forEach(k=>{
           const td=document.createElement("td");
           td.innerText=i[k]; tr.appendChild(td);
