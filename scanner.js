@@ -6,6 +6,16 @@ const fs           = require("fs");
 const path         = require("path");
 const multer       = require("multer");
 const { ObjectId } = require("mongodb");
+const { Storage }  = require("@google-cloud/storage");
+
+// --- Google Cloud Storage config ---
+const GCP_BUCKET = process.env.GCP_BUCKET_NAME || "mi-app-incidencias-2025";
+let gcpCreds = process.env.GCP_SERVICE_ACCOUNT_JSON;
+if (gcpCreds && typeof gcpCreds === "string") {
+  try { gcpCreds = JSON.parse(gcpCreds); } catch (e) { gcpCreds = undefined; }
+}
+const storageGCS = new Storage({ credentials: gcpCreds });
+const bucket = storageGCS.bucket(GCP_BUCKET);
 
 // Actualizar estado y/o comentario de una incidencia en un solo request (debe ir después de inicializar router)
 router.put("/incidencias/:id", async (req, res) => {
@@ -42,22 +52,8 @@ router.put("/incidencias/:id", async (req, res) => {
   }
 });
 
-// --- Asegurar carpeta de uploads dentro de public ---
-const uploadDir = path.join(__dirname, "public", "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// --- Configuración de Multer para adjuntos ---
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename:    (req, file, cb) => {
-    const ext  = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
-    cb(null, `${name}-${Date.now()}${ext}`);
-  }
-});
-const upload = multer({ storage });
+// --- Multer: solo almacena en memoria, no en disco ---
+const upload = multer({ storage: multer.memoryStorage() });
 
 // ----------------------------------------
 // RUTAS DE PAQUETES
@@ -296,7 +292,7 @@ router.get("/all", async (req, res) => {
 // RUTAS DE INCIDENCIAS
 // ----------------------------------------
 
-// Crear incidencia con adjuntos iniciales
+// Crear incidencia con adjuntos iniciales (sube a GCS)
 router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
   const { paquete_id, tipo, descripcion } = req.body;
   if (!paquete_id || !tipo || !descripcion) {
@@ -306,6 +302,22 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
     const collection = global.db.collection("Incidencias");
     const fecha      = new Date();
     const incId      = `${paquete_id}-IN`;
+    let adjuntos = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const ext = path.extname(file.originalname);
+        const name = path.basename(file.originalname, ext);
+        const gcsFileName = `incidencias/${incId}/${name}-${Date.now()}${ext}`;
+        const blob = bucket.file(gcsFileName);
+        await blob.save(file.buffer, { contentType: file.mimetype });
+        await blob.makePublic();
+        adjuntos.push({
+          url: `https://storage.googleapis.com/${GCP_BUCKET}/${gcsFileName}`,
+          nombre: file.originalname,
+          fecha
+        });
+      }
+    }
     const incidencia = {
       _id:           incId,
       paquete_id,
@@ -314,7 +326,7 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
       estado:        "Abierta",
       fecha_creacion: fecha,
       historial:     [{ estado: "Abierta", fecha }],
-      adjuntos:      (req.files || []).map(f => `/uploads/${f.filename}`)
+      adjuntos
     };
     await collection.insertOne(incidencia);
     res.status(201).json({ message: "Incidencia creada.", id: incId });
@@ -399,34 +411,39 @@ router.post("/incidencias/:id/comentarios", async (req, res) => {
   }
 });
 
-// Subir adjuntos a una incidencia existente
+// Subir adjuntos a una incidencia existente (sube a GCS)
 router.post(
   "/incidencias/:id/adjuntos",
   upload.array("adjuntos", 10),
   async (req, res) => {
     try {
       const col = global.db.collection("Incidencias");
-      const inc = await col.findOne({ _id: req.params.id });
+      const incId = req.params.id;
+      const inc = await col.findOne({ _id: incId });
       if (!inc) return res.status(404).json({ error: "Incidencia no encontrada." });
-
       const fecha = new Date();
-      const nuevosUrls = (req.files || []).map(f => `/uploads/${f.filename}`);
-
-      // Guardar adjuntos en el array principal y en el historial como evento de adjunto
-      await col.updateOne(
-        { _id: req.params.id },
-        {
-          $push: {
-            adjuntos: { $each: nuevosUrls },
-            historial: {
-              $each: nuevosUrls.map(url => ({ adjuntos: [url], fecha }))
-            }
-          }
+      let nuevosAdjuntos = [];
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          const ext = path.extname(file.originalname);
+          const name = path.basename(file.originalname, ext);
+          const gcsFileName = `incidencias/${incId}/${name}-${Date.now()}${ext}`;
+          const blob = bucket.file(gcsFileName);
+          await blob.save(file.buffer, { contentType: file.mimetype });
+          await blob.makePublic();
+          nuevosAdjuntos.push({
+            url: `https://storage.googleapis.com/${GCP_BUCKET}/${gcsFileName}`,
+            nombre: file.originalname,
+            fecha
+          });
         }
-      );
-
+        await col.updateOne(
+          { _id: incId },
+          { $push: { adjuntos: { $each: nuevosAdjuntos }, historial: { $each: nuevosAdjuntos.map(a => ({ adjuntos: [a.url], fecha: a.fecha })) } } }
+        );
+      }
       // Devolver la incidencia actualizada
-      const updated = await col.findOne({ _id: req.params.id });
+      const updated = await col.findOne({ _id: incId });
       res.json({ message: "Adjuntos subidos y registrados en historial.", incidencia: updated });
     } catch (err) {
       console.error("Error al subir adjuntos:", err);

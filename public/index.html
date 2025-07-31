@@ -752,19 +752,22 @@
           detailStateSelect.value=inc.estado;
           detailAttachments.innerHTML = "";
           if (inc.adjuntos && inc.adjuntos.length > 0) {
-            inc.adjuntos.forEach(url => {
+            inc.adjuntos.forEach(adj => {
+              // adj puede ser string (legacy) o {url, nombre, fecha}
+              let url = adj.url || adj;
+              let nombre = adj.nombre || "Adjunto";
               const ext = url.split('.').pop().toLowerCase();
               if (["jpg","jpeg","png","gif","bmp","webp"].includes(ext)) {
                 const img = document.createElement("img");
                 img.src = url;
                 img.onclick = () => window.open(url, "_blank");
-                img.title = "Ver adjunto";
+                img.title = nombre;
                 detailAttachments.appendChild(img);
               } else {
                 const link = document.createElement("a");
                 link.href = url;
                 link.target = "_blank";
-                link.innerText = "Documento";
+                link.innerText = nombre;
                 link.style.margin = "4px";
                 detailAttachments.appendChild(link);
               }
@@ -829,12 +832,14 @@
         }
         if (ev.adjuntos && Array.isArray(ev.adjuntos) && ev.adjuntos.length > 0) {
           html += `<div><strong>Adjuntos:</strong> `;
-          ev.adjuntos.forEach(url => {
+          ev.adjuntos.forEach(adj => {
+            let url = adj.url || adj;
+            let nombre = adj.nombre || "Adjunto";
             const ext = url.split('.').pop().toLowerCase();
             if (["jpg","jpeg","png","gif","bmp","webp"].includes(ext)) {
-              html += `<img src="${url}" style="width:50px;vertical-align:middle;margin:2px;cursor:pointer;" onclick="window.open('${url}','_blank')" title="Ver adjunto" />`;
+              html += `<img src="${url}" style="width:50px;vertical-align:middle;margin:2px;cursor:pointer;" onclick="window.open('${url}','_blank')" title="${nombre}" />`;
             } else {
-              html += `<a href="${url}" target="_blank" style="margin:2px;">Documento</a>`;
+              html += `<a href="${url}" target="_blank" style="margin:2px;">${nombre}</a>`;
             }
           });
           html += ` <span style=\"font-size:0.8em;color:#666;\">${formatDateTime(ev.fecha)}</span></div>`;

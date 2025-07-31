@@ -159,3 +159,4 @@ $RECYCLE.BIN/
 node_modules/
 # no versionar locks que npm puso dentro de node_modules
 node_modules/**/*.lock
+scanner-ns-*.json
