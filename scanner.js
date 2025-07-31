@@ -1,4 +1,3 @@
-
 // routes/scanner.js
 const express      = require("express");
 const router       = express.Router();
@@ -449,5 +448,49 @@ router.post(
     }
   }
 );
+
+// Eliminar paquete (físico) con contraseña
+router.delete("/paquetes/:id", async (req, res) => {
+  const { password } = req.body;
+  if (password !== "2003") return res.status(403).json({ error: "Contraseña incorrecta." });
+  try {
+    const col = global.db.collection("estados");
+    const result = await col.deleteOne({ paquete_id: req.params.id });
+    if (result.deletedCount === 0) return res.status(404).json({ error: "Paquete no encontrado." });
+    res.json({ message: "Paquete eliminado correctamente." });
+  } catch (err) {
+    console.error("Error al eliminar paquete:", err);
+    res.status(500).json({ error: "Error interno al eliminar paquete." });
+  }
+});
+
+// Eliminar incidencia (físico) con contraseña y borrar adjuntos de GCS
+router.delete("/incidencias/:id", async (req, res) => {
+  const { password } = req.body;
+  if (password !== "2003") return res.status(403).json({ error: "Contraseña incorrecta." });
+  try {
+    const col = global.db.collection("Incidencias");
+    const inc = await col.findOne({ _id: req.params.id });
+    if (!inc) return res.status(404).json({ error: "Incidencia no encontrada." });
+    // Borrar adjuntos de GCS si existen
+    if (inc.adjuntos && Array.isArray(inc.adjuntos)) {
+      for (const adj of inc.adjuntos) {
+        if (adj.url) {
+          try {
+            const url = new URL(adj.url);
+            // url.pathname: /mi-app-incidencias-2025/incidencias/...
+            const path = url.pathname.replace(/^\/[\w-]+\//, "");
+            await bucket.file(path).delete({ ignoreNotFound: true });
+          } catch (e) { /* ignorar error de borrado individual */ }
+        }
+      }
+    }
+    await col.deleteOne({ _id: req.params.id });
+    res.json({ message: "Incidencia eliminada correctamente." });
+  } catch (err) {
+    console.error("Error al eliminar incidencia:", err);
+    res.status(500).json({ error: "Error interno al eliminar incidencia." });
+  }
+});
 
 module.exports = router;

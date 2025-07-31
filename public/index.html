@@ -349,7 +349,13 @@
           <label>Adjuntos existentes</label>
           <div id="detailAttachments" style="margin-bottom:8px;"></div>
           <label for="detailFileInput">Subir nuevos adjuntos</label>
-          <input type="file" id="detailFileInput" multiple style="margin-bottom:8px;" />
+          <input type="file" id="detailFileInput" multiple style="margin-bottom:8px; width: 140px;" />
+          <style>
+            /* Oculta el texto de nombre de archivo seleccionado en el input file del modal de detalle */
+            #detailFileInput::-webkit-file-upload-button { margin-right: 0; }
+            #detailFileInput { color: transparent; }
+            #detailFileInput::file-selector-button { color: initial; }
+          </style>
           <h3 style="margin-top:12px;">Historial de cambios</h3>
           <div id="detailTimeline" style="flex:1; min-height:120px; max-height:220px; overflow-y:auto; border:1px solid #eee; padding:4px; background:#fafbfc;"></div>
         </div>
@@ -577,7 +583,7 @@
         tdInc.innerHTML=r.inc>0?`<button class="hist-inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
         tr.appendChild(tdInc);
         const tdA=document.createElement("td");
-        tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button>`;
+        tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button> <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
         tr.appendChild(tdA);
         scanTbody.appendChild(tr);
       });
@@ -587,6 +593,31 @@
       prevPageBtn.disabled=currentPage===1;
       nextPageBtn.disabled=currentPage===totalPages;
     }
+
+    // Manejo de eliminación de paquete
+    scanTbody.addEventListener("click", async e=>{
+      if(e.target.matches(".delete-paq")){
+        const id = e.target.dataset.id;
+        const password = prompt("Introduce la contraseña para eliminar el paquete:");
+        if(!password) return;
+        try{
+          const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/paquetes/${id}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password })
+          });
+          const j = await res.json();
+          if(res.ok){
+            showToast("Paquete eliminado correctamente","success");
+            loadPage(currentPage);
+          }else{
+            showToast(j.error||"Error al eliminar paquete","error");
+          }
+        }catch{
+          showToast("Error de red","error");
+        }
+      }
+    });
 
     // — Orden y filtro —
     document.querySelectorAll("#scanTable th[data-col]").forEach(th=>{
@@ -723,7 +754,7 @@
         tr.appendChild(tdDate);
 
         const tdA=document.createElement("td");
-        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">Ver</button> <button class="edit-inc" data-id="${i._id}">Editar</button>`;
+        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">Ver</button> <button class="edit-inc" data-id="${i._id}">Editar</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
         tr.appendChild(tdA);
         incTbody.appendChild(tr);
       });
@@ -733,16 +764,30 @@
       incNextBtn.disabled=incPage===maxP;
     }
 
-    document.querySelectorAll("#incTable th[data-col]").forEach(th=>{
-      th.addEventListener("click", ()=>{
-        const c=th.dataset.col;
-        incSortAsc=(incSortCol===c?!incSortAsc:true);
-        incSortCol=c;
-        renderIncTable();
-      });
+    // Manejo de eliminación de incidencia
+    incTbody.addEventListener("click", async e=>{
+      if(e.target.matches(".delete-inc")){
+        const id = e.target.dataset.id;
+        const password = prompt("Introduce la contraseña para eliminar la incidencia:");
+        if(!password) return;
+        try{
+          const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${id}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password })
+          });
+          const j = await res.json();
+          if(res.ok){
+            showToast("Incidencia eliminada correctamente","success");
+            loadIncidencias();
+          }else{
+            showToast(j.error||"Error al eliminar incidencia","error");
+          }
+        }catch{
+          showToast("Error de red","error");
+        }
+      }
     });
-    incPrevBtn.addEventListener("click", ()=>{ if(incPage>1){ incPage--; renderIncTable(); }});
-    incNextBtn.addEventListener("click", ()=>{ const mp=Math.ceil(filteredInc().length/incPageSize); if(incPage<mp){ incPage++; renderIncTable(); }});
 
     // — Abrir modal de detalle/incidencia —
     document.getElementById("view-incidencias").addEventListener("click", async e=>{
