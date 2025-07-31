@@ -335,27 +335,32 @@
     <div class="modal-content">
       <span class="close-icon" id="detailCloseIcon">&times;</span>
       <h2>Detalle de Incidencia</h2>
-      <label for="detailStateSelect">Estado</label>
-      <select id="detailStateSelect">
-        <option>Abierta</option>
-        <option>En proceso</option>
-        <option>Resuelta</option>
-        <option>Cerrada</option>
-        <option>Rechazada</option>
-      </select>
-
-      <label for="detailCommentInput">Comentario</label>
-      <textarea id="detailCommentInput"></textarea>
-
-      <label>Adjuntos existentes</label>
-      <div id="detailAttachments"></div>
-
-      <label for="detailFileInput">Subir nuevos adjuntos</label>
-      <input type="file" id="detailFileInput" multiple />
-
-      <h3>Historial</h3>
-      <div id="detailTimeline" style="max-height:200px; overflow-y:auto;"></div>
-
+      <div style="display: flex; gap: 16px; min-width: 340px;">
+        <!-- Columna izquierda: Cambios/Historial -->
+        <div style="flex:1; min-width: 160px;">
+          <label for="detailStateSelect">Estado</label>
+          <select id="detailStateSelect">
+            <option>Abierta</option>
+            <option>En proceso</option>
+            <option>Resuelta</option>
+            <option>Cerrada</option>
+            <option>Rechazada</option>
+          </select>
+          <label>Adjuntos existentes</label>
+          <div id="detailAttachments"></div>
+          <label for="detailFileInput">Subir nuevos adjuntos</label>
+          <input type="file" id="detailFileInput" multiple />
+          <h3 style="margin-top:12px;">Historial de cambios</h3>
+          <div id="detailTimeline" style="max-height:200px; overflow-y:auto; border:1px solid #eee; padding:4px;"></div>
+        </div>
+        <!-- Columna derecha: Comentarios -->
+        <div style="flex:1; min-width: 160px; border-left:1px solid #eee; padding-left:12px;">
+          <h3>Comentarios</h3>
+          <div id="detailComments" style="max-height:200px; overflow-y:auto; margin-bottom:8px;"></div>
+          <label for="detailCommentInput">Nuevo comentario</label>
+          <textarea id="detailCommentInput"></textarea>
+        </div>
+      </div>
       <div class="buttons">
         <button id="detailSaveBtn">Guardar</button>
       </div>
@@ -753,7 +758,6 @@
           detailAttachments.innerHTML = "";
           if (inc.adjuntos && inc.adjuntos.length > 0) {
             inc.adjuntos.forEach(adj => {
-              // adj puede ser string (legacy) o {url, nombre, fecha}
               let url = adj.url || adj;
               let nombre = adj.nombre || "Adjunto";
               const ext = url.split('.').pop().toLowerCase();
@@ -774,6 +778,16 @@
             });
           } else {
             detailAttachments.innerHTML = '<span style="color:#888;">Sin adjuntos</span>';
+          }
+          // Mostrar comentarios (filtrar historial por eventos con comentario y sin estado ni adjuntos)
+          const comments = (inc.historial||[]).filter(ev => ev.comentario && !ev.estado && (!ev.adjuntos || ev.adjuntos.length===0));
+          const detailComments = document.getElementById("detailComments");
+          if (comments.length > 0) {
+            detailComments.innerHTML = comments.map(ev =>
+              `<div style='margin-bottom:8px;'><span style='color:#333;'>${ev.comentario}</span><br><span style='font-size:0.8em;color:#888;'>${formatDateTime(ev.fecha)}</span></div>`
+            ).join("");
+          } else {
+            detailComments.innerHTML = '<span style="color:#888;">Sin comentarios</span>';
           }
           renderDetailTimeline(inc.historial);
           detailModal.style.display = "flex";
