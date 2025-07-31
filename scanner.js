@@ -323,10 +323,7 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
       descripcion,
       estado:        "Abierta",
       fecha_creacion: fecha,
-      historial:     [
-        { estado: "Abierta", fecha },
-        ...(descripcion && descripcion.trim() ? [{ comentario: descripcion.trim(), fecha }] : [])
-      ],
+      historial:     [{ estado: "Abierta", fecha }],
       adjuntos
     };
     await collection.insertOne(incidencia);
