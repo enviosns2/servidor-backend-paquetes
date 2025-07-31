@@ -845,7 +845,44 @@
     attachRowClicks("#miniTable");
     attachRowClicks("#scanTable");
 
-    incCancel.addEventListener("click", ()=>{ modal.style.display="none"; });
+    // Limpiar formulario de incidencia
+    function clearIncForm() {
+      incPaquete.value = "";
+      incTipo.value = "";
+      incDesc.value = "";
+      incAdjuntos.value = "";
+      // Limpiar lista visual de archivos preadjuntos si existe
+      const preList = document.getElementById("incAdjuntosList");
+      if (preList) preList.innerHTML = "";
+    }
+
+    // Mostrar lista de archivos preadjuntos con opción de eliminar
+    if (!document.getElementById("incAdjuntosList")) {
+      const list = document.createElement("div");
+      list.id = "incAdjuntosList";
+      incAdjuntos.parentElement.insertBefore(list, incAdjuntos.nextSibling);
+    }
+    incAdjuntos.addEventListener("change", function() {
+      const list = document.getElementById("incAdjuntosList");
+      list.innerHTML = "";
+      Array.from(incAdjuntos.files).forEach((f, idx) => {
+        const fileDiv = document.createElement("div");
+        fileDiv.style = "display:flex;align-items:center;gap:4px;";
+        fileDiv.innerHTML = `<span>${f.name}</span> <button type='button' class='del-pre-file' data-idx='${idx}' style='color:red;font-weight:bold;'>×</button>`;
+        list.appendChild(fileDiv);
+      });
+    });
+    document.getElementById("incAdjuntosList").addEventListener("click", function(e) {
+      if (e.target.classList.contains("del-pre-file")) {
+        const idx = parseInt(e.target.dataset.idx);
+        const dt = new DataTransfer();
+        Array.from(incAdjuntos.files).forEach((f, i) => { if (i !== idx) dt.items.add(f); });
+        incAdjuntos.files = dt.files;
+        incAdjuntos.dispatchEvent(new Event("change"));
+      }
+    });
+
+    incCancel.addEventListener("click", ()=>{ modal.style.display="none"; clearIncForm(); });
     incSave.addEventListener("click", async ()=>{
       const form=new FormData();
       form.append("paquete_id", incPaquete.value);
@@ -860,6 +897,7 @@
         if(res.ok){
           showToast("Incidencia creada correctamente","success");
           modal.style.display="none";
+          clearIncForm();
           loadPage(currentPage);
         } else {
           showToast(j.error||"Error al crear incidencia","error");
