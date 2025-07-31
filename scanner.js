@@ -310,7 +310,6 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
         const gcsFileName = `incidencias/${incId}/${name}-${Date.now()}${ext}`;
         const blob = bucket.file(gcsFileName);
         await blob.save(file.buffer, { contentType: file.mimetype });
-        await blob.makePublic();
         adjuntos.push({
           url: `https://storage.googleapis.com/${GCP_BUCKET}/${gcsFileName}`,
           nombre: file.originalname,
@@ -430,7 +429,6 @@ router.post(
           const gcsFileName = `incidencias/${incId}/${name}-${Date.now()}${ext}`;
           const blob = bucket.file(gcsFileName);
           await blob.save(file.buffer, { contentType: file.mimetype });
-          await blob.makePublic();
           nuevosAdjuntos.push({
             url: `https://storage.googleapis.com/${GCP_BUCKET}/${gcsFileName}`,
             nombre: file.originalname,
