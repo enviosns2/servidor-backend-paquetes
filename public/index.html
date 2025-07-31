@@ -1,153 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scanner de rastreo</title>
+  <style>
+    /* ...aquí van los estilos globales... */
+  </style>
+</head>
 <body>
-  <header>
-    <div class="logo">
-      <img src="./LOGO.png" alt="Logo Empresa">
+  <!-- ...contenido HTML existente... -->
+
+  <!-- Vista de Reportes (solo una vez, fuera del <script> y dentro del <body>) -->
+  <div id="view-reportes" style="display:none;padding:24px;">
+    <h2>Reportes y KPIs</h2>
+    <!-- Filtros globales -->
+    <div id="reportes-filtros" style="display:flex;gap:16px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+      <label>Rango de fechas:
+        <button id="repHoy">Hoy</button>
+        <button id="repSemana">Última semana</button>
+        <button id="repMes">Último mes</button>
+        <input type="date" id="repFechaIni"> a <input type="date" id="repFechaFin">
+      </label>
+      <label>Ruta/zona:
+        <select id="repRuta">
+          <option value="">Todas</option>
+          <!-- Opciones dinámicas -->
+        </select>
+      </label>
     </div>
-    <h1>Scanner de rastreo</h1>
-  </header>
-
-  <div id="container">
-    <aside>
-      <nav>
-        <a href="#" id="nav-escaneo"><span class="icon">🔍</span>Escaneo</a>
-        <a href="#" id="nav-historial"><span class="icon">📜</span>Historial</a>
-        <a href="#" id="nav-incidencias"><span class="icon">⚠️</span>Incidencias</a>
-        <a href="#" id="nav-reportes"><span class="icon">📊</span>Reportes</a>
-        <a href="#"><span class="icon">⚙️</span>Ajustes</a>
-      </nav>
-    </aside>
-
-    <main>
-      <!-- ESCANEO -->
-      <section id="view-escaneo">
-        <div id="scannerWidget">
-          <p id="mode">Modo actual: <strong>Recibido</strong></p>
-          <label for="modeSelect">Selecciona fase:</label>
-          <select id="modeSelect"></select>
-          <label for="barcodeInput">Escanea o pega el código:</label>
-          <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus>
-          <p id="status" aria-live="polite"></p>
-        </div>
-        <div id="miniHistory">
-          <h2>Últimos escaneos</h2>
-          <table id="miniTable"><tbody></tbody></table>
-        </div>
-      </section>
-
-      <!-- HISTORIAL COMPLETO -->
-      <section id="view-historial" style="display:none;">
-        <div id="counter">Mostrando 0 de 0 paquetes</div>
-        <div id="tableControls">
-          <input type="text" id="searchInput" placeholder="Buscar paquete…">
-          <select id="stateFilter"></select>
-        </div>
-        <table id="scanTable">
-          <thead></thead>
-          <tbody></tbody>
-        </table>
-        <div id="pagination">
-          <button id="prevPage">Anterior</button>
-          <span id="pageInfo">Página 1</span>
-          <button id="nextPage">Siguiente</button>
-        </div>
-      </section>
-
-      <!-- INCIDENCIAS -->
-      <section id="view-incidencias" style="display:none;">
-        <div id="incTableControls">
-          <input type="text" id="incSearch" placeholder="Buscar ID o paquete…">
-          <select id="incTipoFilter"></select>
-          <select id="incEstadoFilter"></select>
-        </div>
-        <table id="incTable">
-          <thead></thead>
-          <tbody></tbody>
-        </table>
-        <div id="incPagination">
-          <button id="incPrev">Anterior</button>
-          <span id="incPageInfo">Página 1</span>
-          <button id="incNext">Siguiente</button>
-        </div>
-      </section>
-
-      <!-- REPORTES (estructura base, puedes expandirla luego) -->
-      <section id="view-reportes" style="display:none;">
-        <div style="padding:24px;">
-          <h2>Reportes y KPIs</h2>
-          <!-- Aquí puedes agregar los paneles de KPIs, filtros y tablas de reportes -->
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- Modal para reportar incidencia -->
-  <div id="incidenceModal" class="modal">
-    <div class="modal-content">
-      <h2>Reportar incidencia</h2>
-      <label for="incPaquete">Paquete</label>
-      <input type="text" id="incPaquete" readonly>
-      <label for="incTipo">Tipo de incidencia</label>
-      <select id="incTipo">
-        <option value="">-- Seleccione --</option>
-        <option value="Dañado">Dañado</option>
-        <option value="Falta docs">Falta docs</option>
-        <option value="Dirección incorrecta">Dirección incorrecta</option>
-        <option value="Cliente ausente">Cliente ausente</option>
-        <option value="Otro">Otro</option>
-      </select>
-      <label for="incDesc">Descripción</label>
-      <textarea id="incDesc"></textarea>
-      <label for="incAdjuntos">Adjuntar fotos/documentos</label>
-      <input type="file" id="incAdjuntos" multiple>
-      <div class="buttons">
-        <button id="incCancel">Cancelar</button>
-        <button id="incSave">Guardar</button>
+    <!-- Panel de KPIs -->
+    <div id="reportes-kpis" style="display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap;">
+      <div class="kpi-card" id="kpi-total-escaneos">
+        <div class="kpi-title">Total de escaneos</div>
+        <div class="kpi-value">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-entregas-tiempo">
+        <div class="kpi-title">% entregas a tiempo</div>
+        <div class="kpi-value">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-tiempo-transito">
+        <div class="kpi-title">Tiempo medio en tránsito (h)</div>
+        <div class="kpi-value">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-incidencias">
+        <div class="kpi-title">% de incidencias</div>
+        <div class="kpi-value">-</div>
       </div>
     </div>
-  </div>
-
-  <!-- Modal para detalle y edición de incidencia -->
-  <div id="incDetailModal" class="modal">
-    <div class="modal-content">
-      <h2>Detalle de Incidencia</h2>
-      <label for="detailStateSelect">Estado</label>
-      <select id="detailStateSelect">
-        <option>Abierta</option>
-        <option>En proceso</option>
-        <option>Resuelta</option>
-        <option>Cerrada</option>
-        <option>Rechazada</option>
-      </select>
-      <button id="detailChangeStateBtn">Cambiar estado</button>
-
-      <label for="detailCommentInput">Comentario</label>
-      <textarea id="detailCommentInput"></textarea>
-      <button id="detailAddCommentBtn">Agregar comentario</button>
-
-      <label>Adjuntos existentes</label>
-      <div id="detailAttachments" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-
-      <label for="detailFileInput">Subir nuevos adjuntos</label>
-      <input type="file" id="detailFileInput" multiple>
-      <button id="detailUploadBtn">Subir adjuntos</button>
-
-      <h3>Historial</h3>
-      <div id="detailTimeline" style="max-height:200px; overflow-y:auto;"></div>
-
-      <div class="buttons" style="text-align:right; margin-top:10px;">
-        <button id="detailCloseBtn">Cerrar</button>
+    <!-- Gráficos de tendencias -->
+    <div id="reportes-graficos" style="display:flex;gap:32px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:320px;">
+        <h3>Volumen de escaneos diarios</h3>
+        <canvas id="graf-escaneos"></canvas>
       </div>
+      <div style="flex:1;min-width:320px;">
+        <h3>Entregas a tiempo vs. retrasadas</h3>
+        <canvas id="graf-entregas"></canvas>
+      </div>
+    </div>
+    <!-- Distribución de estados -->
+    <div id="reportes-estados" style="margin:32px 0;display:flex;gap:32px;flex-wrap:wrap;">
+      <div style="flex:2;min-width:320px;">
+        <h3>Distribución de estados</h3>
+        <canvas id="graf-estados"></canvas>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <h3>Proporción de fases</h3>
+        <canvas id="graf-estados-pie"></canvas>
+      </div>
+    </div>
+    <!-- Análisis de incidencias -->
+    <div id="reportes-incidencias" style="display:flex;gap:32px;flex-wrap:wrap;">
+      <div style="flex:2;min-width:320px;">
+        <h3>Incidencias por tipo</h3>
+        <canvas id="graf-incidencias"></canvas>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <h3>Top 10 rutas/fases con más incidencias</h3>
+        <table id="tabla-top-incidencias" style="width:100%;border-collapse:collapse;">
+          <thead><tr><th>Ruta/Fase</th><th>Total</th><th>%</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Tabla de datos detallada -->
+    <div style="margin-top:32px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h3>Detalle de movimientos</h3>
+        <button id="exportarDatos">Exportar</button>
+      </div>
+      <div style="overflow-x:auto;max-height:400px;">
+        <table id="tabla-detalle-reportes" style="width:100%;border-collapse:collapse;">
+          <thead style="position:sticky;top:0;background:#fff;z-index:2;">
+            <tr>
+              <th data-col="fecha">Fecha y hora</th>
+              <th data-col="paquete">Paquete</th>
+              <th data-col="nuevo">Estado nuevo</th>
+              <th data-col="previo">Estado anterior</th>
+              <th data-col="incidencias">Incidencias</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="reportes-paginacion" style="margin-top:8px;"></div>
     </div>
   </div>
 
-  <div id="toast"></div>
+  <!-- ...resto del HTML existente (otras vistas, modales, etc.)... -->
 
-  <!-- Aquí va el script JS, que debe ser actualizado con los cambios recientes -->
   <script>
-    // ...aquí debes pegar el JS actualizado con batch delete, selección múltiple, prompts de contraseña, limpieza de formularios, mejoras de incidencias, etc...
-    // Puedes tomar como base el JS de scanner.html y fusionar los cambios recientes de la conversación.
+    // ...todo el código JS aquí, asegurando que esté dentro del <script> y no se mezcle con el HTML...
+    const incDesc      = document.getElementById("incDesc");
+    const incAdjuntos  = document.getElementById("incAdjuntos");
+    const incCancel    = document.getElementById("incCancel");
+    const incSave      = document.getElementById("incSave");
+    const modeSelect   = document.getElementById("modeSelect");
+    const barcodeInput = document.getElementById("barcodeInput");
+    const statusEl     = document.getElementById("status");
+
+    // Referencias detalle incidencia
+    const detailModal        = document.getElementById("incDetailModal");
+    const detailCloseIcon    = document.getElementById("detailCloseIcon");
+    const detailSaveBtn      = document.getElementById("detailSaveBtn");
+    const detailStateSelect  = document.getElementById("detailStateSelect");
+    const detailCommentInput = document.getElementById("detailCommentInput");
+    const detailAttachments  = document.getElementById("detailAttachments");
+    const detailFileInput    = document.getElementById("detailFileInput");
+    const detailTimeline     = document.getElementById("detailTimeline");
+    let currentIncId         = "";
+
+    // — Funciones auxiliares —
+    function clearStatus(){
+      statusEl.innerText = "";
+      statusEl.className = "";
+    }
+    function updateStatus(msg, cls){
+      statusEl.innerText = msg;
+      statusEl.className = cls;
+      setTimeout(clearStatus, 5000);
+    }
+    function showToast(msg, type){
+      toast.innerText = msg;
+      toast.className = `show ${type}`;
+      setTimeout(() => toast.className = "", 3000);
+    }
+    function sanitizeInput(v){
+      return v.replace(/[^0-9a-zA-Z]/g, "-");
+    }
+    function formatDateTime(iso){
+      const d = new Date(iso);
+      const pad = n => n.toString().padStart(2, "0");
+      return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // — Manejo de vistas —
+    function showView(v){
+      ["view-escaneo","view-historial","view-incidencias","view-reportes"]
+        .forEach(id =>
+          document.getElementById(id).style.display = id===v?"block":"none"
+        );
+    }
+    document.getElementById("nav-escaneo").onclick   = ()=>showView("view-escaneo");
+    document.getElementById("nav-historial").onclick = ()=>showView("view-historial");
+    document.getElementById("nav-incidencias").onclick = ()=>{
+      showView("view-incidencias");
+      loadIncidencias();
+    };
+    document.getElementById("nav-reportes").onclick = ()=>{
+      showView("view-reportes");
+      // Aquí se cargarán los datos de reportes en siguientes pasos
+    };
   </script>
-</body>
+
+  <!-- Vista de Reportes (fuera del <script> y dentro del <body>) -->
+  <div id="view-reportes" style="display:none;padding:24px;">
+    <h2>Reportes y KPIs</h2>
+    <!-- Filtros globales -->
+    <div id="reportes-filtros" style="display:flex;gap:16px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+      <label>Rango de fechas:
+        <button id="repHoy">Hoy</button>
+        <button id="repSemana">Última semana</button>
+        <button id="repMes">Último mes</button>
+        <input type="date" id="repFechaIni"> a <input type="date" id="repFechaFin">
+      </label>
+      <label>Ruta/zona:
+        <select id="repRuta">
+          <option value="">Todas</option>
+          <!-- Opciones dinámicas -->
+        </select>
+      </label>
+    </div>
+    <!-- Panel de KPIs -->
+    <div id="reportes-kpis" style="display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap;">
+      <div class="kpi-card" id="kpi-total-escaneos">
+        <div class="kpi-title">Total de escaneos</div>
+        <div class="kpi-value">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-entregas-tiempo">
+        <div class="kpi-title">% entregas a tiempo</div>
+        <div class="kpi-value">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-tiempo-transito">
+        <div class="kpi-title">Tiempo medio en tránsito (h)</div>
+        <div class="kpi-value">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-incidencias">
+        <div class="kpi-title">% de incidencias</div>
+        <div class="kpi-value">-</div>
+      </div>
+    </div>
+    <!-- Gráficos de tendencias -->
+    <div id="reportes-graficos" style="display:flex;gap:32px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:320px;">
+        <h3>Volumen de escaneos diarios</h3>
+        <canvas id="graf-escaneos"></canvas>
+      </div>
+      <div style="flex:1;min-width:320px;">
+        <h3>Entregas a tiempo vs. retrasadas</h3>
+        <canvas id="graf-entregas"></canvas>
+      </div>
+    </div>
+    <!-- Distribución de estados -->
+    <div id="reportes-estados" style="margin:32px 0;display:flex;gap:32px;flex-wrap:wrap;">
+      <div style="flex:2;min-width:320px;">
+        <h3>Distribución de estados</h3>
+        <canvas id="graf-estados"></canvas>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <h3>Proporción de fases</h3>
+        <canvas id="graf-estados-pie"></canvas>
+      </div>
+    </div>
+    <!-- Análisis de incidencias -->
+    <div id="reportes-incidencias" style="display:flex;gap:32px;flex-wrap:wrap;">
+      <div style="flex:2;min-width:320px;">
+        <h3>Incidencias por tipo</h3>
+        <canvas id="graf-incidencias"></canvas>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <h3>Top 10 rutas/fases con más incidencias</h3>
+        <table id="tabla-top-incidencias" style="width:100%;border-collapse:collapse;">
+          <thead><tr><th>Ruta/Fase</th><th>Total</th><th>%</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Tabla de datos detallada -->
+    <div style="margin-top:32px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h3>Detalle de movimientos</h3>
+        <button id="exportarDatos">Exportar</button>
+      </div>
+      <div style="overflow-x:auto;max-height:400px;">
+        <table id="tabla-detalle-reportes" style="width:100%;border-collapse:collapse;">
+          <thead style="position:sticky;top:0;background:#fff;z-index:2;">
+            <tr>
+              <th data-col="fecha">Fecha y hora</th>
+              <th data-col="paquete">Paquete</th>
+              <th data-col="nuevo">Estado nuevo</th>
+              <th data-col="previo">Estado anterior</th>
+              <th data-col="incidencias">Incidencias</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="reportes-paginacion" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+    // — Scanner widget —
+    modeSelect.addEventListener("change", ()=>{
+      mode = modeSelect.value;
+      document.getElementById("mode").innerHTML =
+        `Modo actual: <strong>${modeSelect.selectedOptions[0].text}</strong>`;
+      clearStatus();
+    });
+    ["beforeinput","input","paste","keyup"].forEach(e=>
+      barcodeInput.addEventListener(e, ()=> barcodeInput.value=sanitizeInput(barcodeInput.value))
+    );
+    setInterval(()=>{
+      const v = sanitizeInput(barcodeInput.value);
+      if(barcodeInput.value!==v) barcodeInput.value=v;
+    },25);
+
+    barcodeInput.addEventListener("keydown", e=>{
+      if(e.key==="Enter"){
+        e.preventDefault();
+        setTimeout(async ()=>{
+          const code = sanitizeInput(barcodeInput.value.trim());
+          if(!code) return updateStatus("Por favor, escanea un código válido.","error");
+          const endpoint = mode==="recibido"?"/recibido":`/${mode}`;
+          try{
+            const res = await fetch(
+              `https://servidor-backend-paquetes.onrender.com/scanner${endpoint}`, {
+                method: mode==="recibido"?"POST":"PUT",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({ paquete_id:code })
+              }
+            );
+            if(res.ok){
+              updateStatus("Operación correcta","success");
+              showToast(`Paquete ${code} actualizado`,"success");
+              loadPage(currentPage);
+            } else {
+              const { error } = await res.json();
+              updateStatus(error,"error");
+              showToast(error,"error");
+            }
+          } catch{
+            updateStatus("Error de red.","error");
+            showToast("Error de red","error");
+          } finally{
+            barcodeInput.value="";
+          }
+        },150);
+      }
+    });
+
+    // — Carga y render del historial —
+    async function loadPage(page=1){
+      currentPage=page;
+      let url = `https://servidor-backend-paquetes.onrender.com/scanner/all?page=${page}&pageSize=${pageSize}&sortField=${sortField}&sortOrder=${sortOrder}`;
+      if(filterState) url+=`&state=${encodeURIComponent(filterState)}`;
+      try{
+        const resp = await fetch(url);
+        const { totalItems: total, page: cur, items } = await resp.json();
+        totalItems=total; currentPage=cur;
+        tableData=items.map(p=>{
+          const h=p.historial;
+          return {
+            timeISO:h[h.length-1].fecha,
+            time:formatDateTime(h[h.length-1].fecha),
+            id:p.paquete_id,
+            new:p.estado_actual,
+            prev:h.length>1?h[h.length-2].estado:"",
+            inc:p.incidencias_count
+          };
+        });
+        renderTable(); renderMiniTable();
+      } catch(e){
+        console.error("Error cargando historial:", e);
+      }
+    }
+
+    function renderMiniTable(){
+      miniTbody.innerHTML="";
+      tableData.slice(0,5).forEach(r=>{
+        const tr=document.createElement("tr");
+        ["time","id","new","prev"].forEach(k=>{
+          const td=document.createElement("td");
+          td.innerText=r[k]; tr.appendChild(td);
+        });
+        const tdInc=document.createElement("td");
+        tdInc.innerHTML=r.inc>0?`<button class="inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
+        tr.appendChild(tdInc);
+        const tdA=document.createElement("td");
+        tdA.innerHTML=`<button class="${r.inc>0?"mini-view-inc":"mini-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button>`;
+        tr.appendChild(tdA);
+        tr.addEventListener("click", ()=>{
+          tr.classList.add("highlight");
+          setTimeout(()=>tr.classList.remove("highlight"),500);
+        });
+        miniTbody.appendChild(tr);
+      });
+    }
+
+    function renderTable(){
+      const start=(currentPage-1)*pageSize+1;
+      const end=Math.min(currentPage*pageSize,totalItems);
+      counterEl.innerText=`Mostrando ${start}–${end} de ${totalItems} paquetes`;
+
+      const filtered=tableData.filter(r=>!filterText||r.id.toLowerCase().includes(filterText));
+
+      // Encabezado con checkbox
+      scanTbody.parentElement.querySelector("thead")?.remove();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>
+        <th style='width:32px;'><input type='checkbox' id='selectAllPaqChk'></th>
+        <th data-col='time'>Fecha y hora</th>
+        <th data-col='id'>Paquete</th>
+        <th data-col='new'>Estado nuevo</th>
+        <th data-col='prev'>Estado anterior</th>
+        <th data-col='inc'>Incidencias</th>
+        <th>Acciones</th>
+      </tr>`;
+      scanTbody.parentElement.insertBefore(thead, scanTbody);
+
+      scanTbody.innerHTML="";
+      filtered.forEach(r=>{
+        const tr=document.createElement("tr");
+        // Checkbox de selección
+        const tdSel=document.createElement("td");
+        tdSel.style='text-align:center;';
+        tdSel.innerHTML = `<input type='checkbox' class='sel-paq' data-id='${r.id}' ${selectedPaquetes.has(r.id)?'checked':''}>`;
+        tr.appendChild(tdSel);
+        ["time","id","new","prev"].forEach(k=>{
+          const td=document.createElement("td");
+          td.innerText=r[k]; tr.appendChild(td);
+        });
+        const tdInc=document.createElement("td");
+        tdInc.innerHTML=r.inc>0?`<button class="hist-inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
+        tr.appendChild(tdInc);
+        const tdA=document.createElement("td");
         tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button> <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
         tr.appendChild(tdA);
         scanTbody.appendChild(tr);
@@ -247,10 +504,10 @@
         tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
         tr.appendChild(tdSel);
         ["_id","paquete_id","tipo"].forEach(k=>{
-        const tdA=document.createElement("td");
-        tdA.innerHTML = `<button class="hist-view-inc" data-id="${r.id}">Ver incidencia</button> <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
-        tr.appendChild(tdA);
-        scanTbody.appendChild(tr);
+          const td=document.createElement("td");
+          td.innerText=i[k]; tr.appendChild(td);
+        });
+        const tdEst=document.createElement("td");
         tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
         tr.appendChild(tdEst);
         const tdDate=document.createElement("td");
@@ -532,7 +789,7 @@
           td.innerText=i[k]; tr.appendChild(td);
         });
         const tdEst=document.createElement("td");
-        tdEst.innerText = i.estado;
+        tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
         tr.appendChild(tdEst);
 
         const tdDate=document.createElement("td");
@@ -540,7 +797,7 @@
         tr.appendChild(tdDate);
 
         const tdA=document.createElement("td");
-        tdA.innerHTML = `<button class="view-inc" data-id="${i._id}">Ver</button> <button class="edit-inc" data-id="${i._id}">Editar</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
+        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">Ver</button> <button class="edit-inc" data-id="${i._id}">Editar</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
         tr.appendChild(tdA);
         incTbody.appendChild(tr);
       });
