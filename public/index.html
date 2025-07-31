@@ -106,10 +106,10 @@
         tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
         tr.appendChild(tdSel);
         ["_id","paquete_id","tipo"].forEach(k=>{
-          const td=document.createElement("td");
-          td.innerText=i[k]; tr.appendChild(td);
-        });
-        const tdEst=document.createElement("td");
+        const tdA=document.createElement("td");
+        tdA.innerHTML = `<button class="hist-view-inc" data-id="${r.id}">Ver incidencia</button> <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
+        tr.appendChild(tdA);
+        scanTbody.appendChild(tr);
         tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
         tr.appendChild(tdEst);
         const tdDate=document.createElement("td");
@@ -391,7 +391,7 @@
           td.innerText=i[k]; tr.appendChild(td);
         });
         const tdEst=document.createElement("td");
-        tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
+        tdEst.innerText = i.estado;
         tr.appendChild(tdEst);
 
         const tdDate=document.createElement("td");
@@ -399,7 +399,7 @@
         tr.appendChild(tdDate);
 
         const tdA=document.createElement("td");
-        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">Ver</button> <button class="edit-inc" data-id="${i._id}">Editar</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
+        tdA.innerHTML = `<button class="view-inc" data-id="${i._id}">Ver</button> <button class="edit-inc" data-id="${i._id}">Editar</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
         tr.appendChild(tdA);
         incTbody.appendChild(tr);
       });
