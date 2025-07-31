@@ -1,10 +1,151 @@
 <body>
-  <!-- ...todo el HTML de tus vistas, menús, modales, etc. aquí... -->
+  <header>
+    <div class="logo">
+      <img src="./LOGO.png" alt="Logo Empresa">
+    </div>
+    <h1>Scanner de rastreo</h1>
+  </header>
 
-  <!-- El script debe ir al final del body -->
+  <div id="container">
+    <aside>
+      <nav>
+        <a href="#" id="nav-escaneo"><span class="icon">🔍</span>Escaneo</a>
+        <a href="#" id="nav-historial"><span class="icon">📜</span>Historial</a>
+        <a href="#" id="nav-incidencias"><span class="icon">⚠️</span>Incidencias</a>
+        <a href="#" id="nav-reportes"><span class="icon">📊</span>Reportes</a>
+        <a href="#"><span class="icon">⚙️</span>Ajustes</a>
+      </nav>
+    </aside>
+
+    <main>
+      <!-- ESCANEO -->
+      <section id="view-escaneo">
+        <div id="scannerWidget">
+          <p id="mode">Modo actual: <strong>Recibido</strong></p>
+          <label for="modeSelect">Selecciona fase:</label>
+          <select id="modeSelect"></select>
+          <label for="barcodeInput">Escanea o pega el código:</label>
+          <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus>
+          <p id="status" aria-live="polite"></p>
+        </div>
+        <div id="miniHistory">
+          <h2>Últimos escaneos</h2>
+          <table id="miniTable"><tbody></tbody></table>
+        </div>
+      </section>
+
+      <!-- HISTORIAL COMPLETO -->
+      <section id="view-historial" style="display:none;">
+        <div id="counter">Mostrando 0 de 0 paquetes</div>
+        <div id="tableControls">
+          <input type="text" id="searchInput" placeholder="Buscar paquete…">
+          <select id="stateFilter"></select>
+        </div>
+        <table id="scanTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+        <div id="pagination">
+          <button id="prevPage">Anterior</button>
+          <span id="pageInfo">Página 1</span>
+          <button id="nextPage">Siguiente</button>
+        </div>
+      </section>
+
+      <!-- INCIDENCIAS -->
+      <section id="view-incidencias" style="display:none;">
+        <div id="incTableControls">
+          <input type="text" id="incSearch" placeholder="Buscar ID o paquete…">
+          <select id="incTipoFilter"></select>
+          <select id="incEstadoFilter"></select>
+        </div>
+        <table id="incTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+        <div id="incPagination">
+          <button id="incPrev">Anterior</button>
+          <span id="incPageInfo">Página 1</span>
+          <button id="incNext">Siguiente</button>
+        </div>
+      </section>
+
+      <!-- REPORTES (estructura base, puedes expandirla luego) -->
+      <section id="view-reportes" style="display:none;">
+        <div style="padding:24px;">
+          <h2>Reportes y KPIs</h2>
+          <!-- Aquí puedes agregar los paneles de KPIs, filtros y tablas de reportes -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal para reportar incidencia -->
+  <div id="incidenceModal" class="modal">
+    <div class="modal-content">
+      <h2>Reportar incidencia</h2>
+      <label for="incPaquete">Paquete</label>
+      <input type="text" id="incPaquete" readonly>
+      <label for="incTipo">Tipo de incidencia</label>
+      <select id="incTipo">
+        <option value="">-- Seleccione --</option>
+        <option value="Dañado">Dañado</option>
+        <option value="Falta docs">Falta docs</option>
+        <option value="Dirección incorrecta">Dirección incorrecta</option>
+        <option value="Cliente ausente">Cliente ausente</option>
+        <option value="Otro">Otro</option>
+      </select>
+      <label for="incDesc">Descripción</label>
+      <textarea id="incDesc"></textarea>
+      <label for="incAdjuntos">Adjuntar fotos/documentos</label>
+      <input type="file" id="incAdjuntos" multiple>
+      <div class="buttons">
+        <button id="incCancel">Cancelar</button>
+        <button id="incSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para detalle y edición de incidencia -->
+  <div id="incDetailModal" class="modal">
+    <div class="modal-content">
+      <h2>Detalle de Incidencia</h2>
+      <label for="detailStateSelect">Estado</label>
+      <select id="detailStateSelect">
+        <option>Abierta</option>
+        <option>En proceso</option>
+        <option>Resuelta</option>
+        <option>Cerrada</option>
+        <option>Rechazada</option>
+      </select>
+      <button id="detailChangeStateBtn">Cambiar estado</button>
+
+      <label for="detailCommentInput">Comentario</label>
+      <textarea id="detailCommentInput"></textarea>
+      <button id="detailAddCommentBtn">Agregar comentario</button>
+
+      <label>Adjuntos existentes</label>
+      <div id="detailAttachments" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+
+      <label for="detailFileInput">Subir nuevos adjuntos</label>
+      <input type="file" id="detailFileInput" multiple>
+      <button id="detailUploadBtn">Subir adjuntos</button>
+
+      <h3>Historial</h3>
+      <div id="detailTimeline" style="max-height:200px; overflow-y:auto;"></div>
+
+      <div class="buttons" style="text-align:right; margin-top:10px;">
+        <button id="detailCloseBtn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- Aquí va el script JS, que debe ser actualizado con los cambios recientes -->
   <script>
-    // ...todo el código JS de la app aquí, desde la declaración de variables hasta la inicialización...
-    // (Pega aquí el JS que estaba fuera del <script> y elimina cualquier cierre de </div> o etiquetas mal ubicadas)
+    // ...aquí debes pegar el JS actualizado con batch delete, selección múltiple, prompts de contraseña, limpieza de formularios, mejoras de incidencias, etc...
+    // Puedes tomar como base el JS de scanner.html y fusionar los cambios recientes de la conversación.
   </script>
 </body>
         tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button> <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
