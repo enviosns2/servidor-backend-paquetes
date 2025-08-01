@@ -157,6 +157,51 @@
     #detailTimeline div {
       margin-bottom: 8px;
     }
+
+    /* Dark mode styles */
+    body.dark-mode {
+      background: #181a1b;
+      color: #e0e0e0;
+    }
+    body.dark-mode header {
+      background: #222;
+      color: #fff;
+    }
+    body.dark-mode aside {
+      background: #23272b;
+      color: #e0e0e0;
+    }
+    body.dark-mode main {
+      background: #181a1b;
+      color: #e0e0e0;
+    }
+    body.dark-mode #scannerWidget,
+    body.dark-mode #miniHistory,
+    body.dark-mode #tableControls,
+    body.dark-mode #incTableControls,
+    body.dark-mode #counter,
+    body.dark-mode table,
+    body.dark-mode th,
+    body.dark-mode td,
+    body.dark-mode #toast,
+    body.dark-mode .modal-content {
+      background: #23272b !important;
+      color: #e0e0e0 !important;
+      border-color: #444 !important;
+    }
+    body.dark-mode th {
+      background: #2c3136 !important;
+    }
+    body.dark-mode #toast.success { background: #357a38 !important; }
+    body.dark-mode #toast.error   { background: #b71c1c !important; }
+    body.dark-mode input, body.dark-mode select, body.dark-mode textarea {
+      background: #23272b;
+      color: #e0e0e0;
+      border: 1px solid #444;
+    }
+    body.dark-mode #detailAttachments img {
+      border: 1px solid #444;
+    }
   </style>
 </head>
 <body>
@@ -316,7 +361,7 @@
         <h2>Ajustes</h2>
         <div style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:120px;">
           <p style="color:#888;">Configuración y preferencias del sistema.</p>
-          <!-- Estructura visual básica, puedes agregar formularios de configuración aquí -->
+          <button id="toggleThemeBtn" style="margin-top:16px;">Alternar modo oscuro/claro</button>
         </div>
       </section>
     </main>
@@ -1174,6 +1219,25 @@
     // — Inicialización —
     loadPage(1);
     showView("view-escaneo");
+
+
+    // --- Alternar modo oscuro/claro ---
+    const toggleThemeBtn = document.getElementById("toggleThemeBtn");
+    if (toggleThemeBtn) {
+      toggleThemeBtn.onclick = function() {
+        document.body.classList.toggle("dark-mode");
+        // Guardar preferencia en localStorage
+        if (document.body.classList.contains("dark-mode")) {
+          localStorage.setItem("theme", "dark");
+        } else {
+          localStorage.setItem("theme", "light");
+        }
+      };
+      // Al cargar, aplicar preferencia guardada
+      if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark-mode");
+      }
+    }
   </script>
 </body>
 </html>
