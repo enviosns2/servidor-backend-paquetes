@@ -16,6 +16,9 @@ if (gcpCreds && typeof gcpCreds === "string") {
 const storageGCS = new Storage({ credentials: gcpCreds });
 const bucket = storageGCS.bucket(GCP_BUCKET);
 
+// --- Multer: solo almacena en memoria, no en disco ---
+const upload = multer({ storage: multer.memoryStorage() });
+
 // Actualizar estado y/o comentario de una incidencia en un solo request (debe ir después de inicializar router)
 router.put("/incidencias/:id", upload.array("adjuntos"), async (req, res) => {
   const { nuevo_estado, comentario } = req.body;
@@ -77,9 +80,6 @@ router.put("/incidencias/:id", upload.array("adjuntos"), async (req, res) => {
     res.status(500).json({ error: "Error interno al actualizar incidencia." });
   }
 });
-
-// --- Multer: solo almacena en memoria, no en disco ---
-const upload = multer({ storage: multer.memoryStorage() });
 
 // ----------------------------------------
 // RUTAS DE PAQUETES
