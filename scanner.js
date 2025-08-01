@@ -19,6 +19,79 @@ const bucket = storageGCS.bucket(GCP_BUCKET);
 // --- Multer: solo almacena en memoria, no en disco ---
 const upload = multer({ storage: multer.memoryStorage() });
 
+// ----------------------------------------
+// AGRUPAMIENTO POR CONTENEDOR
+// ----------------------------------------
+
+// [POST] /scanner/contenedor/agregar
+// Asocia uno o varios paquetes a un contenedor
+router.post("/contenedor/agregar", async (req, res) => {
+  const { contenedor_id, paquetes } = req.body;
+  if (!contenedor_id || !Array.isArray(paquetes) || paquetes.length === 0) {
+    return res.status(400).json({ error: "Se requiere contenedor_id y un array de paquetes." });
+  }
+  try {
+    const col = global.db.collection("contenedores");
+    // upsert: si ya existe, agrega los paquetes nuevos al array (sin duplicados)
+    await col.updateOne(
+      { contenedor_id },
+      { $addToSet: { paquetes: { $each: paquetes } } },
+      { upsert: true }
+    );
+    res.json({ message: "Paquetes asociados al contenedor correctamente." });
+  } catch (err) {
+    console.error("Error al asociar paquetes a contenedor:", err);
+    res.status(500).json({ error: "Error interno al asociar paquetes a contenedor." });
+  }
+});
+
+// [PUT] /scanner/contenedor/:id/estado
+// Actualiza el estado de todos los paquetes de un contenedor
+router.put("/contenedor/:id/estado", async (req, res) => {
+  const { nuevo_estado } = req.body;
+  if (!nuevo_estado) {
+    return res.status(400).json({ error: "El campo 'nuevo_estado' es requerido." });
+  }
+  try {
+    const colCont = global.db.collection("contenedores");
+    const colPaq  = global.db.collection("estados");
+    const cont = await colCont.findOne({ contenedor_id: req.params.id });
+    if (!cont || !Array.isArray(cont.paquetes) || cont.paquetes.length === 0) {
+      return res.status(404).json({ error: "Contenedor no encontrado o sin paquetes asociados." });
+    }
+    const fecha = new Date();
+    // Actualiza todos los paquetes asociados
+    const result = await colPaq.updateMany(
+      { paquete_id: { $in: cont.paquetes } },
+      {
+        $set: { estado_actual: nuevo_estado },
+        $push: { historial: { estado: nuevo_estado, fecha } }
+      }
+    );
+    res.json({
+      message: "Estado actualizado para todos los paquetes del contenedor.",
+      paquetes_actualizados: result.modifiedCount
+    });
+  } catch (err) {
+    console.error("Error al actualizar estado de contenedor:", err);
+    res.status(500).json({ error: "Error interno al actualizar estado de contenedor." });
+  }
+});
+
+// [GET] /scanner/contenedor/:id/paquetes
+// Obtiene los paquetes asociados a un contenedor
+router.get("/contenedor/:id/paquetes", async (req, res) => {
+  try {
+    const col = global.db.collection("contenedores");
+    const cont = await col.findOne({ contenedor_id: req.params.id });
+    if (!cont) return res.status(404).json({ error: "Contenedor no encontrado." });
+    res.json({ paquetes: cont.paquetes || [] });
+  } catch (err) {
+    console.error("Error al obtener paquetes de contenedor:", err);
+    res.status(500).json({ error: "Error interno al obtener paquetes de contenedor." });
+  }
+});
+
 // Actualizar estado y/o comentario de una incidencia en un solo request (debe ir después de inicializar router)
 router.put("/incidencias/:id", upload.array("adjuntos"), async (req, res) => {
   const { nuevo_estado, comentario } = req.body;
@@ -542,6 +615,47 @@ router.delete("/incidencias/:id", async (req, res) => {
   } catch (err) {
     console.error("Error al eliminar incidencia:", err);
     res.status(500).json({ error: "Error interno al eliminar incidencia." });
+  }
+});
+
+// Obtener todos los contenedores (para reportes)
+router.get("/contenedor/all", async (req, res) => {
+  try {
+    const col = global.db.collection("contenedores");
+    const conts = await col.find({}).toArray();
+    res.json(conts);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener contenedores." });
+  }
+});
+
+// Obtener detalles de varios paquetes (para reportes)
+router.post("/paquetes/detalles", async (req, res) => {
+  const { paquetes } = req.body;
+  if (!Array.isArray(paquetes) || paquetes.length === 0) {
+    return res.json([]);
+  }
+  try {
+    const colPaq = global.db.collection("estados");
+    const colInc = global.db.collection("Incidencias");
+    const docs = await colPaq.find({ paquete_id: { $in: paquetes } }).toArray();
+    // Para cada paquete, contar incidencias y obtener fecha de creación
+    const result = await Promise.all(docs.map(async p => {
+      const incCount = await colInc.countDocuments({ paquete_id: p.paquete_id });
+      let fecha_creacion = null;
+      if (Array.isArray(p.historial) && p.historial.length > 0) {
+        fecha_creacion = p.historial[0].fecha;
+      }
+      return {
+        paquete_id: p.paquete_id,
+        incidencias_count: incCount,
+        fecha_creacion,
+        historial: p.historial
+      };
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json([]);
   }
 });
 
