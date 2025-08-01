@@ -316,6 +316,7 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
         });
       }
     }
+    // Guardar la descripción como comentario en el historial
     const incidencia = {
       _id:           incId,
       paquete_id,
@@ -323,7 +324,10 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
       descripcion,
       estado:        "Abierta",
       fecha_creacion: fecha,
-      historial:     [{ estado: "Abierta", fecha }],
+      historial: [
+        { estado: "Abierta", fecha },
+        { comentario: descripcion, fecha }
+      ],
       adjuntos
     };
     await collection.insertOne(incidencia);
