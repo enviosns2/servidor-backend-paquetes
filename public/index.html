@@ -157,6 +157,74 @@
     #detailTimeline div {
       margin-bottom: 8px;
     }
+
+    /* Estilos específicos para Reportes */
+    .report-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      background: #f0f4f8;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    .report-controls label {
+      margin: 0 4px 0 0;
+      font-weight: bold;
+    }
+    .report-controls input,
+    .report-controls select {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .report-controls button {
+      padding: 8px 16px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+    .report-controls button:hover {
+      background: #0056b3;
+    }
+    .report-output {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .report-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .report-card h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: #333;
+    }
+    .report-stats {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #007bff;
+    }
+    .chart-placeholder {
+      flex: 1;
+      background: #f9f9f9;
+      border: 1px dashed #ccc;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -173,7 +241,7 @@
         <a href="#" id="nav-escaneo"><span class="icon">🔍</span>Escaneo</a>
         <a href="#" id="nav-historial"><span class="icon">📜</span>Historial</a>
         <a href="#" id="nav-incidencias"><span class="icon">⚠️</span>Incidencias</a>
-        <a href="#"><span class="icon">📊</span>Reportes</a>
+        <a href="#" id="nav-reportes"><span class="icon">📊</span>Reportes</a>
         <a href="#"><span class="icon">⚙️</span>Ajustes</a>
       </nav>
     </aside>
@@ -299,6 +367,26 @@
           <button id="incPrev">Anterior</button>
           <span id="incPageInfo">Página 1</span>
           <button id="incNext">Siguiente</button>
+        </div>
+      </section>
+
+      <!-- REPORTES -->
+      <section id="view-reportes" style="display:none;">
+        <h2>Reportes</h2>
+        <div class="report-controls">
+          <label for="reportFrom">Desde:</label>
+          <input type="date" id="reportFrom">
+          <label for="reportTo">Hasta:</label>
+          <input type="date" id="reportTo">
+          <label for="reportType">Tipo de reporte:</label>
+          <select id="reportType">
+            <option value="escaneos">Escaneos</option>
+            <option value="incidencias">Incidencias</option>
+          </select>
+          <button id="generateReport">Generar</button>
+        </div>
+        <div id="reportOutput" class="report-output">
+          <!-- Aquí se inyectarán las tarjetas de resumen y gráficos -->
         </div>
       </section>
     </main>
@@ -460,7 +548,7 @@
 
     // — Manejo de vistas —
     function showView(v){
-      ["view-escaneo","view-historial","view-incidencias"]
+      ["view-escaneo","view-historial","view-incidencias","view-reportes"]
         .forEach(id =>
           document.getElementById(id).style.display = id===v?"block":"none"
         );
@@ -470,6 +558,9 @@
     document.getElementById("nav-incidencias").onclick = ()=>{
       showView("view-incidencias");
       loadIncidencias();
+    };
+    document.getElementById("nav-reportes")?.onclick = () => {
+      showView("view-reportes");
     };
 
     // — Scanner widget —
