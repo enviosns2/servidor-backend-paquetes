@@ -301,27 +301,6 @@
           <button id="incNext">Siguiente</button>
         </div>
       </section>
-
-      <!-- REPORTES -->
-      <section id="view-reportes" style="display:none;">
-        <h2>Reportes y análisis</h2>
-        <div id="reportesControls" style="margin-bottom:16px;">
-          <label>Rango de fechas:
-            <input type="date" id="repFechaInicio"> a
-            <input type="date" id="repFechaFin">
-          </label>
-          <select id="repTipo">
-            <option value="">Todos los tipos</option>
-            <option value="paquetes">Paquetes</option>
-            <option value="incidencias">Incidencias</option>
-          </select>
-          <button id="repGenerar">Generar reporte</button>
-        </div>
-        <div id="reportesResumen" style="margin-bottom:24px;">
-          <b>Selecciona un rango de fechas y tipo de reporte para ver estadísticas.</b>
-        </div>
-        <div id="reportesTabla"></div>
-      </section>
     </main>
   </div>
 
@@ -481,7 +460,7 @@
 
     // — Manejo de vistas —
     function showView(v){
-      ["view-escaneo","view-historial","view-incidencias","view-reportes"]
+      ["view-escaneo","view-historial","view-incidencias"]
         .forEach(id =>
           document.getElementById(id).style.display = id===v?"block":"none"
         );
@@ -491,10 +470,6 @@
     document.getElementById("nav-incidencias").onclick = ()=>{
       showView("view-incidencias");
       loadIncidencias();
-    };
-    document.querySelector('aside nav a span.icon:contains("📊")').parentElement.onclick = ()=>{
-      showView("view-reportes");
-      renderReportesDefault();
     };
 
     // — Scanner widget —
