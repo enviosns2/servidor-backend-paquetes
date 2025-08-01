@@ -164,12 +164,20 @@
       color: #e0e0e0;
     }
     body.dark-mode header {
-      background: #222;
+      background: #23272b;
       color: #fff;
     }
     body.dark-mode aside {
-      background: #23272b;
+      background: #202328;
       color: #e0e0e0;
+    }
+    body.dark-mode aside nav a {
+      color: #b0b8c1;
+    }
+    body.dark-mode aside nav a:hover,
+    body.dark-mode aside nav a:focus {
+      color: #fff;
+      background: #23272b;
     }
     body.dark-mode main {
       background: #181a1b;
@@ -180,27 +188,108 @@
     body.dark-mode #tableControls,
     body.dark-mode #incTableControls,
     body.dark-mode #counter,
-    body.dark-mode table,
-    body.dark-mode th,
-    body.dark-mode td,
     body.dark-mode #toast,
     body.dark-mode .modal-content {
       background: #23272b !important;
       color: #e0e0e0 !important;
       border-color: #444 !important;
     }
-    body.dark-mode th {
-      background: #2c3136 !important;
+    body.dark-mode #miniTable,
+    body.dark-mode #scanTable,
+    body.dark-mode #incTable {
+      background: #23272b;
+      color: #e0e0e0;
     }
-    body.dark-mode #toast.success { background: #357a38 !important; }
-    body.dark-mode #toast.error   { background: #b71c1c !important; }
+    body.dark-mode th, body.dark-mode #miniTable th, body.dark-mode #scanTable th, body.dark-mode #incTable th {
+      background: #23272b !important;
+      color: #f0f0f0 !important;
+      border-color: #444 !important;
+    }
+    body.dark-mode td, body.dark-mode #miniTable td, body.dark-mode #scanTable td, body.dark-mode #incTable td {
+      background: #23272b !important;
+      color: #e0e0e0 !important;
+      border-color: #444 !important;
+    }
+    body.dark-mode tr:nth-child(even) td {
+      background: #202328 !important;
+    }
+    body.dark-mode #pagination,
+    body.dark-mode #incPagination {
+      background: transparent;
+      color: #e0e0e0;
+    }
+    body.dark-mode #toast.success { background: #357a38 !important; color: #fff !important; }
+    body.dark-mode #toast.error   { background: #b71c1c !important; color: #fff !important; }
     body.dark-mode input, body.dark-mode select, body.dark-mode textarea {
       background: #23272b;
       color: #e0e0e0;
       border: 1px solid #444;
     }
+    body.dark-mode input:focus, body.dark-mode select:focus, body.dark-mode textarea:focus {
+      outline: 2px solid #4f8cff;
+      background: #23272b;
+      color: #fff;
+    }
     body.dark-mode #detailAttachments img {
       border: 1px solid #444;
+    }
+    body.dark-mode a, body.dark-mode a:visited {
+      color: #4f8cff;
+    }
+    body.dark-mode a:hover {
+      color: #82aaff;
+    }
+    body.dark-mode .success { color: #7fff7f !important; }
+    body.dark-mode .error   { color: #ff7f7f !important; }
+    body.dark-mode .highlight {
+      animation: highlight-dark 1s ease;
+    }
+    @keyframes highlight-dark {
+      from { background: #444444; }
+      to   { background: transparent; }
+    }
+    /* Switch visual para alternar tema */
+    .theme-switch {
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      margin-top: 16px;
+    }
+    .theme-switch input[type="checkbox"] {
+      display: none;
+    }
+    .theme-switch .slider {
+      width: 44px;
+      height: 24px;
+      background: #ccc;
+      border-radius: 24px;
+      position: relative;
+      transition: background 0.3s;
+      margin-right: 10px;
+    }
+    .theme-switch .slider::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.3s, background 0.3s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .theme-switch input[type="checkbox"]:checked + .slider {
+      background: #23272b;
+    }
+    .theme-switch input[type="checkbox"]:checked + .slider::before {
+      transform: translateX(20px);
+      background: #4f8cff;
+    }
+    .theme-switch .label-text {
+      font-size: 1rem;
+      color: inherit;
     }
   </style>
 </head>
@@ -361,7 +450,11 @@
         <h2>Ajustes</h2>
         <div style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:120px;">
           <p style="color:#888;">Configuración y preferencias del sistema.</p>
-          <button id="toggleThemeBtn" style="margin-top:16px;">Alternar modo oscuro/claro</button>
+          <label class="theme-switch">
+            <input type="checkbox" id="toggleThemeSwitch">
+            <span class="slider"></span>
+            <span class="label-text">Modo oscuro</span>
+          </label>
         </div>
       </section>
     </main>
@@ -1222,21 +1315,22 @@
 
 
     // --- Alternar modo oscuro/claro ---
-    const toggleThemeBtn = document.getElementById("toggleThemeBtn");
-    if (toggleThemeBtn) {
-      toggleThemeBtn.onclick = function() {
-        document.body.classList.toggle("dark-mode");
-        // Guardar preferencia en localStorage
-        if (document.body.classList.contains("dark-mode")) {
+    const toggleThemeSwitch = document.getElementById("toggleThemeSwitch");
+    // Inicializar el estado del switch según localStorage
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark-mode");
+      if (toggleThemeSwitch) toggleThemeSwitch.checked = true;
+    }
+    if (toggleThemeSwitch) {
+      toggleThemeSwitch.onchange = function() {
+        if (toggleThemeSwitch.checked) {
+          document.body.classList.add("dark-mode");
           localStorage.setItem("theme", "dark");
         } else {
+          document.body.classList.remove("dark-mode");
           localStorage.setItem("theme", "light");
         }
       };
-      // Al cargar, aplicar preferencia guardada
-      if (localStorage.getItem("theme") === "dark") {
-        document.body.classList.add("dark-mode");
-      }
     }
   </script>
 </body>
