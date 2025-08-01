@@ -1238,9 +1238,8 @@
 
     // — Abrir modal de detalle/incidencia —
     document.getElementById("view-incidencias").addEventListener("click", async e=>{
-      if(e.target.matches(".view-inc") || e.target.matches(".edit-inc")){
+      if(e.target.matches(".view-inc")){
         currentIncId=e.target.dataset.id;
-        // resetear campos no guardados
         detailCommentInput.value="";
         detailFileInput.value="";
         try{
@@ -1271,8 +1270,20 @@
           } else {
             detailAttachments.innerHTML = '<span style="color:#888;">Sin adjuntos</span>';
           }
-          // Mostrar comentarios (filtrar historial por eventos con comentario y sin estado ni adjuntos)
-          const comments = (inc.historial||[]).filter(ev => ev.comentario && !ev.estado && (!ev.adjuntos || ev.adjuntos.length===0));
+          // Mostrar comentarios: solo eventos con comentario y sin estado ni adjuntos
+          const comments = [];
+          // Si hay descripción, mostrarla como primer comentario
+          if (inc.descripcion) {
+            comments.push({
+              comentario: inc.descripcion,
+              fecha: inc.fecha_creacion
+            });
+          }
+          (inc.historial||[]).forEach(ev => {
+            if (ev.comentario && !ev.estado && (!ev.adjuntos || ev.adjuntos.length===0)) {
+              comments.push(ev);
+            }
+          });
           const detailComments = document.getElementById("detailComments");
           if (comments.length > 0) {
             detailComments.innerHTML = comments.map(ev =>
@@ -1281,7 +1292,7 @@
           } else {
             detailComments.innerHTML = '<span style="color:#888;">Sin comentarios</span>';
           }
-          renderDetailTimeline(inc.historial);
+          renderDetailTimeline(inc.historial, inc.fecha_creacion, inc.descripcion);
           detailModal.style.display = "flex";
         } catch{
           showToast("No se pudo cargar la incidencia","error");
@@ -1293,7 +1304,6 @@
     detailSaveBtn.addEventListener("click", async ()=>{
       detailSaveBtn.disabled=true;
       try{
-        // actualizar estado y comentario y adjuntos en un solo request (FormData)
         const form = new FormData();
         form.append("nuevo_estado", detailStateSelect.value);
         form.append("comentario", detailCommentInput.value);
@@ -1305,6 +1315,8 @@
         showToast("Cambios guardados","success");
         detailModal.style.display="none";
         loadIncidencias();
+        detailCommentInput.value = "";
+        detailFileInput.value = "";
       }catch(err){
         showToast(err.error||"Error al guardar cambios","error");
       }finally{
@@ -1317,15 +1329,16 @@
       detailModal.style.display="none";
     });
 
-    function renderDetailTimeline(historial){
-      historial.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
-      detailTimeline.innerHTML = historial.map(ev => {
+    function renderDetailTimeline(historial, fecha_creacion, descripcion){
+      // Solo mostrar eventos de estado y adjuntos (no comentarios ni descripción)
+      let timeline = [];
+      if (historial && historial.length) {
+        timeline = historial.filter(ev => ev.estado || (ev.adjuntos && ev.adjuntos.length > 0));
+      }
+      detailTimeline.innerHTML = timeline.map(ev => {
         let html = '';
         if (ev.estado) {
           html += `<div><strong>Estado:</strong> ${ev.estado} <span style="font-size:0.8em;color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
-        }
-        if (ev.comentario) {
-          html += `<div><strong>Comentario:</strong> ${ev.comentario} <span style="font-size:0.8em;color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
         }
         if (ev.adjuntos && Array.isArray(ev.adjuntos) && ev.adjuntos.length > 0) {
           html += `<div><strong>Adjuntos:</strong> `;

@@ -17,25 +17,52 @@ const storageGCS = new Storage({ credentials: gcpCreds });
 const bucket = storageGCS.bucket(GCP_BUCKET);
 
 // Actualizar estado y/o comentario de una incidencia en un solo request (debe ir después de inicializar router)
-router.put("/incidencias/:id", async (req, res) => {
+router.put("/incidencias/:id", upload.array("adjuntos"), async (req, res) => {
   const { nuevo_estado, comentario } = req.body;
-  if (!nuevo_estado && (!comentario || !comentario.trim())) {
-    return res.status(400).json({ error: "Se requiere al menos un campo a actualizar (nuevo_estado o comentario)." });
+  if (!nuevo_estado && (!comentario || !comentario.trim()) && (!req.files || req.files.length === 0)) {
+    return res.status(400).json({ error: "Se requiere al menos un campo a actualizar (nuevo_estado, comentario o adjuntos)." });
   }
   try {
     const col = global.db.collection("Incidencias");
     const fecha = new Date();
-    const update = {};
+    let update = {};
+    let historialPush = [];
+
     if (nuevo_estado) {
       update.$set = { estado: nuevo_estado };
-      update.$push = { historial: { estado: nuevo_estado, fecha } };
+      historialPush.push({ estado: nuevo_estado, fecha });
     }
     if (comentario && comentario.trim()) {
-      if (!update.$push) update.$push = {};
-      update.$push.historial = update.$push.historial
-        ? { $each: [update.$push.historial, { comentario: comentario.trim(), fecha }] }
-        : { comentario: comentario.trim(), fecha };
+      historialPush.push({ comentario: comentario.trim(), fecha });
     }
+
+    // Adjuntar archivos nuevos si existen
+    let nuevosAdjuntos = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const ext = path.extname(file.originalname);
+        const name = path.basename(file.originalname, ext);
+        const gcsFileName = `incidencias/${req.params.id}/${name}-${Date.now()}${ext}`;
+        const blob = bucket.file(gcsFileName);
+        await blob.save(file.buffer, { contentType: file.mimetype });
+        nuevosAdjuntos.push({
+          url: `https://storage.googleapis.com/${GCP_BUCKET}/${gcsFileName}`,
+          nombre: file.originalname,
+          fecha
+        });
+      }
+      if (!update.$push) update.$push = {};
+      update.$push.adjuntos = { $each: nuevosAdjuntos };
+      nuevosAdjuntos.forEach(adj => {
+        historialPush.push({ adjuntos: [adj], fecha: adj.fecha });
+      });
+    }
+
+    if (historialPush.length > 0) {
+      if (!update.$push) update.$push = {};
+      update.$push.historial = { $each: historialPush };
+    }
+
     const result = await col.updateOne(
       { _id: req.params.id },
       update
