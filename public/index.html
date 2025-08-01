@@ -734,7 +734,7 @@
 
       const filtered=tableData.filter(r=>!filterText||r.id.toLowerCase().includes(filterText));
 
-      // Encabezado con checkbox (solo el checkbox, sin botón extra)
+      // Encabezado con checkbox
       scanTbody.parentElement.querySelector("thead")?.remove();
       const thead = document.createElement("thead");
       thead.innerHTML = `<tr>
@@ -769,7 +769,7 @@
         scanTbody.appendChild(tr);
       });
 
-      // Controles de selección múltiple (solo contador y eliminar seleccionados)
+      // Controles de selección múltiple (solo "Eliminar seleccionados" y contador)
       let controls = document.getElementById("multiPaqControls");
       if(!controls){
         controls = document.createElement("div");
@@ -810,8 +810,7 @@
         });
       });
 
-      // Seleccionar todos al hacer click en el checkbox del encabezado
-      document.getElementById("selectAllPaqChk").checked = selectedPaquetes.size===filtered.length&&filtered.length>0;
+      // Selección por checkbox de cabecera
       document.getElementById("selectAllPaqChk").onclick = ()=>{
         if(selectedPaquetes.size===filtered.length&&filtered.length>0){
           filtered.forEach(r=>selectedPaquetes.delete(r.id));
@@ -839,7 +838,7 @@
       const end=Math.min(incPage*incPageSize, all.length);
       incPageInfoEl.innerText=`Mostrando ${start}–${end} de ${all.length} incidencias`;
 
-      // Encabezado con checkbox (solo el checkbox, sin botón extra)
+      // Encabezado con checkbox
       incTbody.parentElement.querySelector("thead")?.remove();
       const thead = document.createElement("thead");
       thead.innerHTML = `<tr>
@@ -877,7 +876,7 @@
         incTbody.appendChild(tr);
       });
 
-      // Controles de selección múltiple (solo eliminar seleccionados, arriba de la tabla)
+      // Controles de selección múltiple (solo "Eliminar seleccionados" y contador) - ahora arriba de la tabla
       let controls = document.getElementById("multiIncControls");
       if(!controls){
         controls = document.createElement("div");
@@ -918,8 +917,7 @@
         });
       });
 
-      // Seleccionar todos al hacer click en el checkbox del encabezado
-      document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
+      // Selección por checkbox de cabecera
       document.getElementById("selectAllIncChk").onclick = ()=>{
         if(selectedIncidencias.size===all.length&&all.length>0){
           all.forEach(i=>selectedIncidencias.delete(i._id));
@@ -1117,7 +1115,7 @@
       const end=Math.min(incPage*incPageSize, all.length);
       incPageInfoEl.innerText=`Mostrando ${start}–${end} de ${all.length} incidencias`;
 
-      // Encabezado con checkbox (solo el checkbox, sin botón extra)
+      // Encabezado con checkbox
       incTbody.parentElement.querySelector("thead")?.remove();
       const thead = document.createElement("thead");
       thead.innerHTML = `<tr>
@@ -1157,7 +1155,7 @@
         incTbody.appendChild(tr);
       });
 
-      // Controles de selección múltiple (solo eliminar seleccionados, arriba de la tabla)
+      // Controles de selección múltiple (solo "Eliminar seleccionados" y contador) - ahora arriba de la tabla
       let controls = document.getElementById("multiIncControls");
       if(!controls){
         controls = document.createElement("div");
@@ -1198,8 +1196,7 @@
         });
       });
 
-      // Seleccionar todos al hacer click en el checkbox del encabezado
-      document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
+      // Selección por checkbox de cabecera
       document.getElementById("selectAllIncChk").onclick = ()=>{
         if(selectedIncidencias.size===all.length&&all.length>0){
           all.forEach(i=>selectedIncidencias.delete(i._id));
