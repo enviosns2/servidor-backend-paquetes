@@ -173,8 +173,8 @@
         <a href="#" id="nav-escaneo"><span class="icon">🔍</span>Escaneo</a>
         <a href="#" id="nav-historial"><span class="icon">📜</span>Historial</a>
         <a href="#" id="nav-incidencias"><span class="icon">⚠️</span>Incidencias</a>
-        <a href="#"><span class="icon">📊</span>Reportes</a>
-        <a href="#"><span class="icon">⚙️</span>Ajustes</a>
+        <a href="#" id="nav-reportes"><span class="icon">📊</span>Reportes</a>
+        <a href="#" id="nav-ajustes"><span class="icon">⚙️</span>Ajustes</a>
       </nav>
     </aside>
 
@@ -299,6 +299,24 @@
           <button id="incPrev">Anterior</button>
           <span id="incPageInfo">Página 1</span>
           <button id="incNext">Siguiente</button>
+        </div>
+      </section>
+
+      <!-- REPORTES -->
+      <section id="view-reportes" style="display:none;">
+        <h2>Reportes</h2>
+        <div style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:180px;">
+          <p style="color:#888;">Aquí se mostrarán los reportes y estadísticas del sistema.</p>
+          <!-- Estructura visual básica, puedes agregar gráficos o tablas aquí -->
+        </div>
+      </section>
+
+      <!-- AJUSTES -->
+      <section id="view-ajustes" style="display:none;">
+        <h2>Ajustes</h2>
+        <div style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:120px;">
+          <p style="color:#888;">Configuración y preferencias del sistema.</p>
+          <!-- Estructura visual básica, puedes agregar formularios de configuración aquí -->
         </div>
       </section>
     </main>
@@ -460,7 +478,7 @@
 
     // — Manejo de vistas —
     function showView(v){
-      ["view-escaneo","view-historial","view-incidencias"]
+      ["view-escaneo","view-historial","view-incidencias","view-reportes","view-ajustes"]
         .forEach(id =>
           document.getElementById(id).style.display = id===v?"block":"none"
         );
@@ -471,6 +489,8 @@
       showView("view-incidencias");
       loadIncidencias();
     };
+    document.getElementById("nav-reportes").onclick = ()=>showView("view-reportes");
+    document.getElementById("nav-ajustes").onclick  = ()=>showView("view-ajustes");
 
     // — Scanner widget —
     modeSelect.addEventListener("change", ()=>{
