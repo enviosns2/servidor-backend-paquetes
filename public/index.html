@@ -447,14 +447,21 @@
 
       <!-- AJUSTES -->
       <section id="view-ajustes" style="display:none;">
-        <h2>Ajustes</h2>
+        <h2 id="settingsTitle">Ajustes</h2>
         <div style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:120px;">
-          <p style="color:#888;">Configuración y preferencias del sistema.</p>
+          <p id="settingsDesc" style="color:#888;">Configuración y preferencias del sistema.</p>
           <label class="theme-switch">
             <input type="checkbox" id="toggleThemeSwitch">
             <span class="slider"></span>
-            <span class="label-text">Modo oscuro</span>
+            <span class="label-text" id="themeLabel">Modo oscuro</span>
           </label>
+          <div style="margin-top:18px;">
+            <label for="langSelect" id="langLabel" style="margin-right:8px;">Idioma:</label>
+            <select id="langSelect">
+              <option value="es">Español</option>
+              <option value="en">English</option>
+            </select>
+          </div>
         </div>
       </section>
     </main>
@@ -1381,6 +1388,177 @@
         }
       };
     }
+
+    // Traducciones básicas
+    const translations = {
+      es: {
+        "Ajustes": "Ajustes",
+        "Configuración y preferencias del sistema.": "Configuración y preferencias del sistema.",
+        "Modo oscuro": "Modo oscuro",
+        "Idioma:": "Idioma:",
+        "Escaneo": "Escaneo",
+        "Historial": "Historial",
+        "Incidencias": "Incidencias",
+        "Reportes": "Reportes",
+        "Paquete": "Paquete",
+        "Fecha y hora": "Fecha y hora",
+        "Estado nuevo": "Estado nuevo",
+        "Estado anterior": "Estado anterior",
+        "Incidencias": "Incidencias",
+        "Acciones": "Acciones",
+        "Buscar paquete…": "Buscar paquete…",
+        "Todos los estados": "Todos los estados",
+        "Mostrando": "Mostrando",
+        "de": "de",
+        "Página": "Página",
+        "Anterior": "Anterior",
+        "Siguiente": "Siguiente",
+        "Tipo de incidencia": "Tipo de incidencia",
+        "Descripción": "Descripción",
+        "Adjuntar fotos/documentos": "Adjuntar fotos/documentos",
+        "Cancelar": "Cancelar",
+        "Guardar": "Guardar",
+        "Detalle de Incidencia": "Detalle de Incidencia",
+        "Estado": "Estado",
+        "Adjuntos existentes": "Adjuntos existentes",
+        "Subir nuevos adjuntos": "Subir nuevos adjuntos",
+        "Historial de cambios": "Historial de cambios",
+        "Comentarios": "Comentarios",
+        "Nuevo comentario": "Nuevo comentario",
+        "Configuración y preferencias del sistema.": "Configuración y preferencias del sistema.",
+        "Aquí se mostrarán los reportes y estadísticas del sistema.": "Aquí se mostrarán los reportes y estadísticas del sistema.",
+        "Eliminar seleccionados": "Eliminar seleccionados",
+        "Ver": "Ver",
+        "Eliminar": "Eliminar",
+        "Reportar incidencia": "Reportar incidencia",
+        "Reportar": "Reportar",
+        "Sin comentarios": "Sin comentarios",
+        "Sin adjuntos": "Sin adjuntos"
+      },
+      en: {
+        "Ajustes": "Settings",
+        "Configuración y preferencias del sistema.": "System settings and preferences.",
+        "Modo oscuro": "Dark mode",
+        "Idioma:": "Language:",
+        "Escaneo": "Scan",
+        "Historial": "History",
+        "Incidencias": "Incidents",
+        "Reportes": "Reports",
+        "Paquete": "Package",
+        "Fecha y hora": "Date & Time",
+        "Estado nuevo": "New status",
+        "Estado anterior": "Previous status",
+        "Incidencias": "Incidents",
+        "Acciones": "Actions",
+        "Buscar paquete…": "Search package…",
+        "Todos los estados": "All statuses",
+        "Mostrando": "Showing",
+        "de": "of",
+        "Página": "Page",
+        "Anterior": "Previous",
+        "Siguiente": "Next",
+        "Tipo de incidencia": "Incident type",
+        "Descripción": "Description",
+        "Adjuntar fotos/documentos": "Attach photos/documents",
+        "Cancelar": "Cancel",
+        "Guardar": "Save",
+        "Detalle de Incidencia": "Incident details",
+        "Estado": "Status",
+        "Adjuntos existentes": "Existing attachments",
+        "Subir nuevos adjuntos": "Upload new attachments",
+        "Historial de cambios": "Change history",
+        "Comentarios": "Comments",
+        "Nuevo comentario": "New comment",
+        "Configuración y preferencias del sistema.": "System settings and preferences.",
+        "Aquí se mostrarán los reportes y estadísticas del sistema.": "Reports and system statistics will be shown here.",
+        "Eliminar seleccionados": "Delete selected",
+        "Ver": "View",
+        "Eliminar": "Delete",
+        "Reportar incidencia": "Report incident",
+        "Reportar": "Report",
+        "Sin comentarios": "No comments",
+        "Sin adjuntos": "No attachments"
+      }
+    };
+
+    let currentLang = localStorage.getItem("lang") || "es";
+
+    function t(str) {
+      return translations[currentLang][str] || str;
+    }
+
+    function applyTranslations() {
+      // Ajustes
+      document.getElementById("settingsTitle").innerText = t("Ajustes");
+      document.getElementById("settingsDesc").innerText = t("Configuración y preferencias del sistema.");
+      document.getElementById("themeLabel").innerText = t("Modo oscuro");
+      document.getElementById("langLabel").innerText = t("Idioma:");
+      // Menú lateral
+      document.getElementById("nav-escaneo").innerHTML = `<span class="icon">🔍</span>${t("Escaneo")}`;
+      document.getElementById("nav-historial").innerHTML = `<span class="icon">📜</span>${t("Historial")}`;
+      document.getElementById("nav-incidencias").innerHTML = `<span class="icon">⚠️</span>${t("Incidencias")}`;
+      document.getElementById("nav-reportes").innerHTML = `<span class="icon">📊</span>${t("Reportes")}`;
+      document.getElementById("nav-ajustes").innerHTML = `<span class="icon">⚙️</span>${t("Ajustes")}`;
+      // Placeholders y botones
+      document.getElementById("searchInput").placeholder = t("Buscar paquete…");
+      document.getElementById("stateFilter").options[0].text = t("Todos los estados");
+      document.getElementById("incSearch").placeholder = t("Buscar ID o paquete…");
+      document.getElementById("incTipoFilter").options[0].text = t("Todos los tipos");
+      document.getElementById("incEstadoFilter").options[0].text = t("Todos los estados");
+      // Modal incidencia
+      document.querySelector("#incidenceModal h2").innerText = t("Reportar incidencia");
+      document.querySelector("label[for='incPaquete']").innerText = t("Paquete");
+      document.querySelector("label[for='incTipo']").innerText = t("Tipo de incidencia");
+      document.querySelector("label[for='incDesc']").innerText = t("Descripción");
+      document.querySelector("label[for='incAdjuntos']").innerText = t("Adjuntar fotos/documentos");
+      document.getElementById("incCancel").innerText = t("Cancelar");
+      document.getElementById("incSave").innerText = t("Guardar");
+      // Modal detalle
+      document.querySelector("#incDetailModal h2").innerText = t("Detalle de Incidencia");
+      document.querySelector("label[for='detailStateSelect']").innerText = t("Estado");
+      document.querySelector("label[for='detailFileInput']").innerText = t("Subir nuevos adjuntos");
+      document.querySelector("label[for='detailCommentInput']").innerText = t("Nuevo comentario");
+      document.querySelector("#incDetailModal h3").innerText = t("Historial de cambios");
+      document.querySelector("#incDetailModal h3 + div").previousElementSibling.previousElementSibling.innerText = t("Adjuntos existentes");
+      document.getElementById("detailSaveBtn").innerText = t("Guardar");
+      // Reportes
+      document.querySelector("#view-reportes h2").innerText = t("Reportes");
+      document.querySelector("#view-reportes p").innerText = t("Aquí se mostrarán los reportes y estadísticas del sistema.");
+      // Ajustes
+      document.getElementById("langLabel").innerText = t("Idioma:");
+      // Tablas
+      // (Las cabeceras de tabla pueden ser traducidas si lo deseas, aquí solo ejemplo para historial)
+      document.querySelectorAll("#scanTable th[data-col='time']")[0].innerText = t("Fecha y hora");
+      document.querySelectorAll("#scanTable th[data-col='id']")[0].innerText = t("Paquete");
+      document.querySelectorAll("#scanTable th[data-col='new']")[0].innerText = t("Estado nuevo");
+      document.querySelectorAll("#scanTable th[data-col='prev']")[0].innerText = t("Estado anterior");
+      document.querySelectorAll("#scanTable th[data-col='inc']")[0].innerText = t("Incidencias");
+      document.querySelectorAll("#scanTable th")[6].innerText = t("Acciones");
+      // Incidencias tabla
+      document.querySelectorAll("#incTable th[data-col='_id']")[0].innerText = "ID";
+      document.querySelectorAll("#incTable th[data-col='paquete_id']")[0].innerText = t("Paquete");
+      document.querySelectorAll("#incTable th[data-col='tipo']")[0].innerText = t("Tipo de incidencia");
+      document.querySelectorAll("#incTable th[data-col='estado']")[0].innerText = t("Estado");
+      document.querySelectorAll("#incTable th[data-col='fecha_creacion']")[0].innerText = t("Fecha creación");
+      document.querySelectorAll("#incTable th")[6].innerText = t("Acciones");
+      // Botones de selección múltiple
+      let btn = document.getElementById("deleteSelectedPaq");
+      if(btn) btn.innerText = t("Eliminar seleccionados");
+      btn = document.getElementById("deleteSelectedInc");
+      if(btn) btn.innerText = t("Eliminar seleccionados");
+    }
+
+    // Cambiar idioma
+    const langSelect = document.getElementById("langSelect");
+    langSelect.value = currentLang;
+    langSelect.onchange = function() {
+      currentLang = langSelect.value;
+      localStorage.setItem("lang", currentLang);
+      applyTranslations();
+    };
+
+    // Aplicar traducciones al cargar
+    document.addEventListener("DOMContentLoaded", applyTranslations);
   </script>
 </body>
 </html>
