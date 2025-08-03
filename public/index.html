@@ -1529,7 +1529,9 @@
         "Colapsar": "Colapsar",
         "Agregar a contenedor": "Agregar a contenedor",
         "Selecciona contenedor destino": "Selecciona contenedor destino",
-        "Agregar": "Agregar"
+        "Agregar": "Agregar",
+        "Fecha de creación del contenedor": "Fecha de creación del contenedor",
+        "Fecha del paquete más antiguo": "Fecha del paquete más antiguo"
       },
       en: {
         "Ajustes": "Settings",
@@ -1617,7 +1619,9 @@
         "Colapsar": "Collapse",
         "Agregar a contenedor": "Add to container",
         "Selecciona contenedor destino": "Select destination container",
-        "Agregar": "Add"
+        "Agregar": "Add",
+        "Fecha de creación del contenedor": "Container creation date",
+        "Fecha del paquete más antiguo": "Oldest package date"
       }
     };
 
@@ -1765,6 +1769,7 @@
           let paquetesData = [];
           let incidenciasTotales = 0;
           let fechaMasAntigua = null;
+          let fechaMasAntiguaStr = "N/A";
           if (paquetes.length > 0) {
             // Obtener datos de paquetes y sus incidencias
             const paquetesRes = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/paquetes/detalles", {
@@ -1779,8 +1784,16 @@
               const fecha = new Date(p.fecha_creacion || p.historial?.[0]?.fecha);
               if (!fechaMasAntigua || fecha < fechaMasAntigua) fechaMasAntigua = fecha;
             }
+            if (fechaMasAntigua) {
+              fechaMasAntiguaStr = formatDateTime(fechaMasAntigua.toISOString());
+            }
           }
-          // Calcular tiempo transcurrido
+          // Fecha de creación del contenedor
+          let fechaContenedorStr = "N/A";
+          if (cont.fecha_creacion) {
+            fechaContenedorStr = formatDateTime(cont.fecha_creacion);
+          }
+          // Calcular antigüedad
           let tiempo = "N/A";
           if (fechaMasAntigua) {
             const ms = Date.now() - fechaMasAntigua.getTime();
@@ -1788,7 +1801,7 @@
             const horas = Math.floor((ms % (1000*60*60*24)) / (1000*60*60));
             tiempo = dias > 0 ? `${dias}d ${horas}h` : `${horas}h`;
           }
-          // Tarjeta con botón expandir
+          // Tarjeta con fechas
           const card = document.createElement("div");
           card.style = "background:#fff;border:1px solid #ccc;border-radius:8px;padding:18px;min-width:220px;max-width:260px;box-shadow:0 2px 8px #0001;display:flex;flex-direction:column;gap:8px;position:relative;";
           card.innerHTML = `
@@ -1796,6 +1809,8 @@
             <div>${t("Paquetes")}: <strong>${paquetes.length}</strong></div>
             <div>${t("Incidencias totales")}: <strong>${incidenciasTotales}</strong></div>
             <div>${t("Antigüedad")}: <strong>${tiempo}</strong></div>
+            <div>${t("Fecha de creación del contenedor")}: <strong>${fechaContenedorStr}</strong></div>
+            <div>${t("Fecha del paquete más antiguo")}: <strong>${fechaMasAntiguaStr}</strong></div>
             <button class="btn-expand" style="margin-top:8px;">${t("Expandir")}</button>
             <div class="contenedor-paquetes-detalle" style="display:none;margin-top:10px;">
               <div style="font-weight:bold;margin-bottom:6px;">${t("Paquetes integrados")}:</div>
@@ -1805,7 +1820,6 @@
               <button class="btn-collapse" style="margin-top:8px;">${t("Colapsar")}</button>
             </div>
           `;
-          // Eventos expandir/colapsar
           card.querySelector(".btn-expand").onclick = function() {
             card.querySelector(".contenedor-paquetes-detalle").style.display = "block";
             this.style.display = "none";
@@ -2047,6 +2061,10 @@
     translations.en["Selecciona contenedor destino"] = "Select destination container";
     translations.es["Agregar"] = "Agregar";
     translations.en["Agregar"] = "Add";
+    translations.es["Fecha de creación del contenedor"] = "Fecha de creación del contenedor";
+    translations.en["Fecha de creación del contenedor"] = "Container creation date";
+    translations.es["Fecha del paquete más antiguo"] = "Fecha del paquete más antiguo";
+    translations.en["Fecha del paquete más antiguo"] = "Oldest package date";
   </script>
 </body>
 </html>

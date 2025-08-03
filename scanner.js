@@ -33,12 +33,21 @@ router.post("/contenedor/agregar", async (req, res) => {
   }
   try {
     const col = global.db.collection("contenedores");
-    // upsert: si ya existe, agrega los paquetes nuevos al array (sin duplicados)
-    await col.updateOne(
-      { contenedor_id },
-      { $addToSet: { paquetes: { $each: paquetes } } },
-      { upsert: true }
-    );
+    // Si el contenedor no existe, crear con fecha_creacion
+    const existe = await col.findOne({ contenedor_id });
+    if (!existe) {
+      await col.insertOne({
+        contenedor_id,
+        paquetes: paquetes,
+        fecha_creacion: new Date()
+      });
+    } else {
+      // Si existe, solo agregar paquetes nuevos
+      await col.updateOne(
+        { contenedor_id },
+        { $addToSet: { paquetes: { $each: paquetes } } }
+      );
+    }
     res.json({ message: "Contenedor creado o actualizado correctamente." });
   } catch (err) {
     console.error("Error al asociar paquetes a contenedor:", err);
