@@ -654,6 +654,10 @@
         .forEach(id =>
           document.getElementById(id).style.display = id===v?"block":"none"
         );
+      // Cargar contenedores al mostrar reportes
+      if (v === "view-reportes") {
+        loadContenedoresReport();
+      }
     }
     document.getElementById("nav-escaneo").onclick   = ()=>showView("view-escaneo");
     document.getElementById("nav-historial").onclick = ()=>showView("view-historial");
@@ -798,7 +802,9 @@
         tdInc.innerHTML=r.inc>0?`<button class="hist-inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
         tr.appendChild(tdInc);
         const tdA=document.createElement("td");
-        tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button> <button class="add-to-cont" data-id="${r.id}">${t("Agregar a contenedor")}</button> <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
+        tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button>
+                       <button class="add-to-cont" data-id="${r.id}">${t("Agregar a contenedor")}</button>
+                       <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
         tr.appendChild(tdA);
         scanTbody.appendChild(tr);
       });
@@ -811,7 +817,9 @@
         controls.style = "margin-bottom:8px;";
         scanTbody.parentElement.parentElement.insertBefore(controls, scanTbody.parentElement);
       }
-      controls.innerHTML = `<button id='deleteSelectedPaq'>${t('Eliminar seleccionados')}</button> <button id='addSelectedToCont'>${t('Agregar a contenedor')}</button> <span id='paqSelCount'></span>`;
+      controls.innerHTML = `<button id='deleteSelectedPaq'>${t('Eliminar seleccionados')}</button>
+                            <button id='addSelectedToCont'>${t('Agregar a contenedor')}</button>
+                            <span id='paqSelCount'></span>`;
       document.getElementById("deleteSelectedPaq").onclick = async ()=>{
         if(selectedPaquetes.size===0) return showToast("No hay paquetes seleccionados","error");
         if(!confirm(`¿Eliminar ${selectedPaquetes.size} paquetes?`)) return;
@@ -1726,9 +1734,10 @@
       renderIncTable();
       renderTable();
       loadPage(currentPage);
+      loadContenedoresReport(); // <-- recarga los contenedores en el idioma seleccionado
     };
 
-    // Al cargar la página, traducir todo
+    // Al cargar la página, cargar contenedores si la vista es reportes
     document.addEventListener("DOMContentLoaded", function() {
       currentLang = localStorage.getItem("lang") || "es";
       document.getElementById("langSelect").value = currentLang;
@@ -1736,18 +1745,13 @@
       updateSelectors();
       if(tableData.length > 0) renderTable();
       if(incData.length > 0) renderIncTable();
+      // Si la vista inicial es reportes, cargar contenedores
+      if (document.getElementById("view-reportes").style.display !== "none") {
+        loadContenedoresReport();
+      }
     });
 
-    // Modificar renderTable y renderIncTable para traducir valores internos
-    // ...en renderTable y renderMiniTable...
-    // Ejemplo para renderTable:
-    // td.innerText = t(r[k]); // para columnas de estado
-
-    // ...en renderIncTable...
-    // tdTipo.innerText = t(i.tipo);
-    // tdEst.innerHTML = `<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${t(i.estado)}</span>`;
-
-    // ...en reportes...
+    // --- Reportes: cargar contenedores siempre y ordenar por fecha más reciente ---
     async function loadContenedoresReport() {
       const loading = document.getElementById("contenedoresLoading");
       const cards = document.getElementById("contenedoresCards");
@@ -1756,7 +1760,9 @@
       try {
         // Obtener todos los contenedores
         const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/contenedor/all");
-        const data = await res.json();
+        let data = await res.json();
+        // Ordenar por fecha_creacion descendente (más recientes primero)
+        data = Array.isArray(data) ? data.sort((a, b) => new Date(b.fecha_creacion || 0) - new Date(a.fecha_creacion || 0)) : [];
         if (!Array.isArray(data) || data.length === 0) {
           loading.innerText = t("No hay contenedores registrados.");
           return;
