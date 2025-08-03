@@ -440,7 +440,11 @@
       <section id="view-reportes" style="display:none;">
         <h2>Reportes</h2>
         <div id="contenedoresReportes" style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:180px;">
-          <button id="btnCrearContenedor" style="margin-bottom:16px;">Crear contenedor</button>
+          <div style="margin-bottom:16px;">
+            <button id="btnCrearContenedor">Crear contenedor</button>
+            <button id="btnEliminarContenedores" style="margin-left:8px;">Eliminar seleccionados</button>
+            <span id="contSelCount"></span>
+          </div>
           <p id="contenedoresLoading" style="color:#888;">Cargando contenedores...</p>
           <div id="contenedoresCards" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:12px;"></div>
         </div>
@@ -1752,6 +1756,8 @@
     });
 
     // --- Reportes: cargar contenedores siempre y ordenar por fecha más reciente ---
+    let selectedContenedores = new Set();
+
     async function loadContenedoresReport() {
       const loading = document.getElementById("contenedoresLoading");
       const cards = document.getElementById("contenedoresCards");
@@ -1811,7 +1817,10 @@
           const card = document.createElement("div");
           card.style = "background:#fff;border:1px solid #ccc;border-radius:8px;padding:18px;min-width:220px;max-width:260px;box-shadow:0 2px 8px #0001;display:flex;flex-direction:column;gap:8px;position:relative;";
           card.innerHTML = `
-            <div style="font-weight:bold;font-size:1.1em;">${t("Contenedor")}: ${cont.contenedor_id}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <input type="checkbox" class="cont-sel" data-id="${cont.contenedor_id}" ${selectedContenedores.has(cont.contenedor_id)?'checked':''}>
+              <div style="font-weight:bold;font-size:1.1em;">${t("Contenedor")}: ${cont.contenedor_id}</div>
+            </div>
             <div>${t("Paquetes")}: <strong>${paquetes.length}</strong></div>
             <div>${t("Incidencias totales")}: <strong>${incidenciasTotales}</strong></div>
             <div>${t("Antigüedad")}: <strong>${tiempo}</strong></div>
@@ -1826,6 +1835,20 @@
               <button class="btn-collapse" style="margin-top:8px;">${t("Colapsar")}</button>
             </div>
           `;
+
+          // Event listeners para los checkboxes
+          const checkbox = card.querySelector('.cont-sel');
+          checkbox.addEventListener('change', e => {
+            if(e.target.checked) {
+              selectedContenedores.add(e.target.dataset.id);
+            } else {
+              selectedContenedores.delete(e.target.dataset.id);
+            }
+            document.getElementById("contSelCount").innerText = 
+              selectedContenedores.size > 0 ? `${selectedContenedores.size} ${t('seleccionados')}` : '';
+          });
+
+          // Botones de expandir/colapsar
           card.querySelector(".btn-expand").onclick = function() {
             card.querySelector(".contenedor-paquetes-detalle").style.display = "block";
             this.style.display = "none";
@@ -1840,6 +1863,47 @@
         loading.innerText = t("Error al cargar contenedores.");
       }
     }
+
+    // Añadir listener para eliminar contenedores seleccionados
+    document.getElementById("btnEliminarContenedores").onclick = async () => {
+      if(selectedContenedores.size === 0) {
+        return showToast(t("No hay contenedores seleccionados"), "error");
+      }
+      if(!confirm(t(`¿Eliminar ${selectedContenedores.size} contenedores?`))) {
+        return;
+      }
+      const password = prompt(t("Introduce la contraseña para eliminar los contenedores:"));
+      if(!password) return;
+
+      let ok = 0, fail = 0;
+      for(const id of selectedContenedores) {
+        try {
+          const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/contenedor/${id}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password })
+          });
+          if(res.ok) ok++; else fail++;
+        } catch { fail++; }
+      }
+      showToast(`${t('Eliminados')}: ${ok}, ${t('Fallidos')}: ${fail}`, (fail===0?"success":"error"));
+      selectedContenedores.clear();
+      loadContenedoresReport();
+    };
+
+    // Añadir traducciones necesarias
+    translations.es["No hay contenedores seleccionados"] = "No hay contenedores seleccionados";
+    translations.en["No hay contenedores seleccionados"] = "No containers selected";
+    translations.es["¿Eliminar"] = "¿Eliminar";
+    translations.en["¿Eliminar"] = "Delete";
+    translations.es["contenedores?"] = "contenedores?";
+    translations.en["contenedores?"] = "containers?";
+    translations.es["Introduce la contraseña para eliminar los contenedores:"] = "Introduce la contraseña para eliminar los contenedores:";
+    translations.en["Introduce la contraseña para eliminar los contenedores:"] = "Enter password to delete containers:";
+    translations.es["Eliminados"] = "Eliminados";
+    translations.en["Eliminados"] = "Deleted";
+    translations.es["Fallidos"] = "Fallidos"; 
+    translations.en["Fallidos"] = "Failed";
 
     // --- Modal crear contenedor ---
     const modalCrearContenedor = document.getElementById("modalCrearContenedor");
@@ -1930,10 +1994,6 @@
                        <button class="add-to-cont" data-id="${r.id}">${t("Agregar a contenedor")}</button>
                        <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
         tr.appendChild(tdA);
-        tr.addEventListener("click", ()=>{
-          tr.classList.add("highlight");
-          setTimeout(()=>tr.classList.remove("highlight"),500);
-        });
         scanTbody.appendChild(tr);
       });
 
