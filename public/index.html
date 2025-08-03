@@ -618,7 +618,7 @@
     function formatDateTime(iso){
       const d = new Date(iso);
       const pad = n => n.toString().padStart(2, "0");
-      return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${pad(d.getFullYear())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
     // — Manejo de vistas —
@@ -848,15 +848,14 @@
       // Encabezado con checkbox
       incTbody.parentElement.querySelector("thead")?.remove();
       const thead = document.createElement("thead");
-      // Modificar el thead para usar traducciones
       thead.innerHTML = `<tr>
         <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
         <th data-col='_id'>ID</th>
-        <th data-col='paquete_id'>${t("Paquete")}</th>
-        <th data-col='tipo'>${t("Tipo")}</th>
-        <th data-col='estado'>${t("Estado")}</th>
-        <th data-col='fecha_creacion'>${t("Fecha creación")}</th>
-        <th>${t("Acciones")}</th>
+        <th data-col='paquete_id'>Paquete</th>
+        <th data-col='tipo'>Tipo</th>
+        <th data-col='estado'>Estado</th>
+        <th data-col='fecha_creacion'>Fecha creación</th>
+        <th>Acciones</th>
       </tr>`;
       incTbody.parentElement.insertBefore(thead, incTbody);
 
@@ -868,19 +867,24 @@
         tdSel.style='text-align:center;';
         tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
         tr.appendChild(tdSel);
-        ["_id","paquete_id","tipo"].forEach(k=>{
+        ["_id","paquete_id"].forEach(k=>{
           const td=document.createElement("td");
-          td.innerText=i[k]; tr.appendChild(td);
+          td.innerText = i[k]; tr.appendChild(td);
         });
+        const tdTipo = document.createElement("td");
+        tdTipo.innerText = t(i.tipo);
+        tr.appendChild(tdTipo);
+
         const tdEst=document.createElement("td");
-        tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
+        tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${t(i.estado)}</span>`;
         tr.appendChild(tdEst);
+
         const tdDate=document.createElement("td");
         tdDate.innerText=formatDateTime(i.fecha_creacion);
         tr.appendChild(tdDate);
+
         const tdA=document.createElement("td");
-        // Modificar los botones de acción
-        tdA.innerHTML = `<button class="view-inc" data-id="${i._id}">${t("Ver")}</button> <button class="delete-inc" data-id="${i._id}">${t("Eliminar")}</button>`;
+        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">${t('Ver')}</button> <button class="delete-inc" data-id="${i._id}">${t('Eliminar')}</button>`;
         tr.appendChild(tdA);
         incTbody.appendChild(tr);
       });
@@ -914,14 +918,14 @@
         selectedIncidencias.clear();
         loadIncidencias();
       };
-      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} ${t("seleccionadas")}`:'';
+      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
 
       // Checkbox listeners
       incTbody.querySelectorAll(".sel-inc").forEach(cb=>{
         cb.addEventListener("change",e=>{
           if(e.target.checked) selectedIncidencias.add(e.target.dataset.id);
           else selectedIncidencias.delete(e.target.dataset.id);
-          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} ${t("seleccionadas")}`:'';
+          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
           document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
         });
       });
@@ -1127,15 +1131,14 @@
       // Encabezado con checkbox
       incTbody.parentElement.querySelector("thead")?.remove();
       const thead = document.createElement("thead");
-      // Modificar el thead para usar traducciones
       thead.innerHTML = `<tr>
         <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
         <th data-col='_id'>ID</th>
-        <th data-col='paquete_id'>${t("Paquete")}</th>
-        <th data-col='tipo'>${t("Tipo")}</th>
-        <th data-col='estado'>${t("Estado")}</th>
-        <th data-col='fecha_creacion'>${t("Fecha creación")}</th>
-        <th>${t("Acciones")}</th>
+        <th data-col='paquete_id'>Paquete</th>
+        <th data-col='tipo'>Tipo</th>
+        <th data-col='estado'>Estado</th>
+        <th data-col='fecha_creacion'>Fecha creación</th>
+        <th>${t('Acciones')}</th>
       </tr>`;
       incTbody.parentElement.insertBefore(thead, incTbody);
 
@@ -1147,19 +1150,24 @@
         tdSel.style='text-align:center;';
         tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
         tr.appendChild(tdSel);
-        ["_id","paquete_id","tipo"].forEach(k=>{
+        ["_id","paquete_id"].forEach(k=>{
           const td=document.createElement("td");
-          td.innerText=i[k]; tr.appendChild(td);
+          td.innerText = i[k]; tr.appendChild(td);
         });
+        const tdTipo = document.createElement("td");
+        tdTipo.innerText = t(i.tipo);
+        tr.appendChild(tdTipo);
+
         const tdEst=document.createElement("td");
-        tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
+        tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${t(i.estado)}</span>`;
         tr.appendChild(tdEst);
+
         const tdDate=document.createElement("td");
         tdDate.innerText=formatDateTime(i.fecha_creacion);
         tr.appendChild(tdDate);
+
         const tdA=document.createElement("td");
-        // Modificar los botones de acción
-        tdA.innerHTML = `<button class="view-inc" data-id="${i._id}">${t("Ver")}</button> <button class="delete-inc" data-id="${i._id}">${t("Eliminar")}</button>`;
+        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">${t('Ver')}</button> <button class="delete-inc" data-id="${i._id}">${t('Eliminar')}</button>`;
         tr.appendChild(tdA);
         incTbody.appendChild(tr);
       });
@@ -1193,14 +1201,14 @@
         selectedIncidencias.clear();
         loadIncidencias();
       };
-      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} ${t("seleccionadas")}`:'';
+      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
 
       // Checkbox listeners
       incTbody.querySelectorAll(".sel-inc").forEach(cb=>{
         cb.addEventListener("change",e=>{
           if(e.target.checked) selectedIncidencias.add(e.target.dataset.id);
           else selectedIncidencias.delete(e.target.dataset.id);
-          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} ${t("seleccionadas")}`:'';
+          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
           document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
         });
       });
@@ -1472,36 +1480,36 @@
         "Escanea el código aquí": "Escanea el código aquí",
         "Últimos escaneos": "Últimos escaneos",
         "ID": "ID",
-        "Tipo": "Type",
-        "Estado": "Status",
-        "Fecha creación": "Creation Date",
-        "Acciones": "Actions",
-        "Ver": "View",
-        "Eliminar": "Delete",
-        "Eliminar seleccionados": "Delete Selected",
-        "seleccionados": "selected",
-        "seleccionadas": "selected",
-        "Abierta": "Open",
-        "En proceso": "In Progress",
-        "Resuelta": "Resolved",
-        "Cerrada": "Closed",
-        "Rechazada": "Rejected",
-        "Sin comentarios": "No comments",
-        "Sin adjuntos": "No attachments",
-        "Modo actual:": "Current mode:",
-        "Operación correcta": "Operation successful",
-        "Error de red": "Network error",
-        "Error al crear incidencia": "Error creating incident",
-        "Incidencia creada correctamente": "Incident created successfully",
-        "Error al eliminar incidencia": "Error deleting incident",
-        "Incidencia eliminada correctamente": "Incident deleted successfully",
-        "¿Eliminar": "Delete",
-        "incidencias?": "incidents?",
-        "paquetes?": "packages?",
-        "Eliminados:": "Deleted:",
-        "Fallidos:": "Failed:",
-        "Contraseña incorrecta": "Incorrect password",
-        "Introduce la contraseña para eliminar": "Enter password to delete"
+        "Tipo": "Tipo",
+        "Estado": "Estado",
+        "Fecha creación": "Fecha creación",
+        "Acciones": "Acciones",
+        "Ver": "Ver",
+        "Eliminar": "Eliminar",
+        "Eliminar seleccionados": "Eliminar seleccionados",
+        "seleccionados": "seleccionados",
+        "seleccionadas": "seleccionadas",
+        "Abierta": "Abierta",
+        "En proceso": "En proceso",
+        "Resuelta": "Resuelta",
+        "Cerrada": "Cerrada",
+        "Rechazada": "Rechazada",
+        "Sin comentarios": "Sin comentarios",
+        "Sin adjuntos": "Sin adjuntos",
+        "Modo actual:": "Modo actual:",
+        "Operación correcta": "Operación correcta",
+        "Error de red": "Error de red",
+        "Error al crear incidencia": "Error al crear incidencia",
+        "Incidencia creada correctamente": "Incidencia creada correctamente",
+        "Error al eliminar incidencia": "Error al eliminar incidencia",
+        "Incidencia eliminada correctamente": "Incidencia eliminada correctamente",
+        "¿Eliminar": "¿Eliminar",
+        "incidencias?": "incidencias?",
+        "paquetes?": "paquetes?",
+        "Eliminados:": "Eliminados:",
+        "Fallidos:": "Fallidos:",
+        "Contraseña incorrecta": "Contraseña incorrecta",
+        "Introduce la contraseña para eliminar": "Introduce la contraseña para eliminar"
       },
       en: {
         "Ajustes": "Settings",
@@ -1641,10 +1649,46 @@
       currentLang = langSelect.value;
       localStorage.setItem("lang", currentLang);
       applyTranslations();
+      updateSelectors();
+      renderIncTable(); // Re-renderizar tabla con nuevas traducciones
     };
 
-    // Aplicar traducciones al cargar
-    document.addEventListener("DOMContentLoaded", applyTranslations);
+    // Modificar los selectores para traducir sus opciones
+    function updateSelectors() {
+      const stateFilter = document.getElementById("stateFilter");
+      const incTipoFilter = document.getElementById("incTipoFilter");
+      const incEstadoFilter = document.getElementById("incEstadoFilter");
+
+      // Traducir opciones del filtro de estados
+      Array.from(stateFilter.options).forEach(opt => {
+        opt.text = t(opt.text);
+      });
+
+      // Traducir opciones del filtro de tipos
+      Array.from(incTipoFilter.options).forEach(opt => {
+        if(opt.value) opt.text = t(opt.text);
+      });
+
+      // Traducir opciones del filtro de estados de incidencias
+      Array.from(incEstadoFilter.options).forEach(opt => {
+        if(opt.value) opt.text = t(opt.text);
+      });
+    }
+
+    // Llamar a updateSelectors cuando se cambia el idioma
+    langSelect.addEventListener("change", function() {
+      currentLang = this.value;
+      localStorage.setItem("lang", currentLang);
+      applyTranslations();
+      updateSelectors();
+      renderIncTable(); // Re-renderizar tabla con nuevas traducciones
+    });
+
+    // Llamar también al cargar la página
+    document.addEventListener("DOMContentLoaded", function() {
+      applyTranslations();
+      updateSelectors();
+    });
 
     // --- Reportes: tarjetas de contenedores ---
     async function loadContenedoresReport() {
