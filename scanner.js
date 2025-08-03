@@ -669,4 +669,19 @@ router.post("/paquetes/detalles", async (req, res) => {
   }
 });
 
+// Eliminar contenedor (físico) con contraseña
+router.delete("/contenedor/:id", async (req, res) => {
+  const { password } = req.body;
+  if (password !== "2003") return res.status(403).json({ error: "Contraseña incorrecta." });
+  try {
+    const col = global.db.collection("contenedores");
+    const result = await col.deleteOne({ contenedor_id: req.params.id });
+    if (result.deletedCount === 0) return res.status(404).json({ error: "Contenedor no encontrado." });
+    res.json({ message: "Contenedor eliminado correctamente." });
+  } catch (err) {
+    console.error("Error al eliminar contenedor:", err);
+    res.status(500).json({ error: "Error interno al eliminar contenedor." });
+  }
+});
+
 module.exports = router;
