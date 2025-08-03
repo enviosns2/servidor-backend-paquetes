@@ -598,6 +598,7 @@
     // --- Selección múltiple de paquetes ---
     let selectedPaquetes = new Set();
     let selectedIncidencias = new Set();
+    let selectedContenedores = new Set();
 
     // — Referencias DOM —
     const counterEl    = document.getElementById("counter");
@@ -1766,51 +1767,53 @@
       loading.style.display = "block";
       cards.innerHTML = "";
       selectedContenedores.clear();
-      document.getElementById("contSelCount").innerText = "";
-      document.getElementById("selectAllContChk").checked = false;
+      // Solo actualiza los controles si existen en el DOM
+      if (document.getElementById("contSelCount")) document.getElementById("contSelCount").innerText = "";
+      if (document.getElementById("selectAllContChk")) document.getElementById("selectAllContChk").checked = false;
       try {
         // Obtener todos los contenedores
         const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/contenedor/all");
         let data = await res.json();
+        // Si el backend retorna un objeto, conviértelo en array
+        if (!Array.isArray(data)) data = [];
         // Ordenar por fecha_creacion descendente (más recientes primero)
-        data = Array.isArray(data) ? data.sort((a, b) => new Date(b.fecha_creacion || 0) - new Date(a.fecha_creacion || 0)) : [];
-        if (!Array.isArray(data) || data.length === 0) {
+        data = data.filter(c => c && c.contenedor_id).sort((a, b) => new Date(b.fecha_creacion || 0) - new Date(a.fecha_creacion || 0));
+        if (data.length === 0) {
           loading.innerText = t("No hay contenedores registrados.");
           return;
         }
         loading.style.display = "none";
         // Para cada contenedor, obtener datos de paquetes y calcular incidencias y antigüedad
         for (const cont of data) {
-          // Obtener detalles de paquetes
-          let paquetes = cont.paquetes || [];
+          let paquetes = Array.isArray(cont.paquetes) ? cont.paquetes : [];
           let paquetesData = [];
           let incidenciasTotales = 0;
           let fechaMasAntigua = null;
           let fechaMasAntiguaStr = "N/A";
           if (paquetes.length > 0) {
-            // Obtener datos de paquetes y sus incidencias
-            const paquetesRes = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/paquetes/detalles", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ paquetes })
-            });
-            paquetesData = await paquetesRes.json();
-            // Calcular incidencias y fecha más antigua
+            try {
+              const paquetesRes = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/paquetes/detalles", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paquetes })
+              });
+              paquetesData = await paquetesRes.json();
+            } catch {
+              paquetesData = [];
+            }
             for (const p of paquetesData) {
               incidenciasTotales += p.incidencias_count || 0;
-              const fecha = new Date(p.fecha_creacion || p.historial?.[0]?.fecha);
+              const fecha = new Date(p.fecha_creacion || (p.historial?.[0]?.fecha));
               if (!fechaMasAntigua || fecha < fechaMasAntigua) fechaMasAntigua = fecha;
             }
             if (fechaMasAntigua) {
               fechaMasAntiguaStr = formatDateTime(fechaMasAntigua.toISOString());
             }
           }
-          // Fecha de creación del contenedor
           let fechaContenedorStr = "N/A";
           if (cont.fecha_creacion) {
             fechaContenedorStr = formatDateTime(cont.fecha_creacion);
           }
-          // Calcular antigüedad
           let tiempo = "N/A";
           if (fechaMasAntigua) {
             const ms = Date.now() - fechaMasAntigua.getTime();
@@ -1818,7 +1821,6 @@
             const horas = Math.floor((ms % (1000*60*60*24)) / (1000*60*60));
             tiempo = dias > 0 ? `${dias}d ${horas}h` : `${horas}h`;
           }
-          // Tarjeta con fechas y checkbox individual
           const card = document.createElement("div");
           card.style = "background:#fff;border:1px solid #ccc;border-radius:8px;padding:18px;min-width:220px;max-width:260px;box-shadow:0 2px 8px #0001;display:flex;flex-direction:column;gap:8px;position:relative;";
           card.innerHTML = `
@@ -1853,21 +1855,22 @@
             const id = this.dataset.id;
             if (this.checked) selectedContenedores.add(id);
             else selectedContenedores.delete(id);
-            document.getElementById("contSelCount").innerText = selectedContenedores.size > 0 ?
-              `${selectedContenedores.size} seleccionados` : '';
-            // Sincronizar checkbox masivo
+            if (document.getElementById("contSelCount"))
+              document.getElementById("contSelCount").innerText = selectedContenedores.size > 0 ?
+                `${selectedContenedores.size} seleccionados` : '';
             const allCards = Array.from(cards.querySelectorAll(".sel-cont"));
-            document.getElementById("selectAllContChk").checked =
-              selectedContenedores.size === allCards.length && allCards.length > 0;
+            if (document.getElementById("selectAllContChk"))
+              document.getElementById("selectAllContChk").checked =
+                selectedContenedores.size === allCards.length && allCards.length > 0;
           });
           cards.appendChild(card);
         }
         // Actualizar contador si hay selección previa
         document.getElementById("contSelCount").innerText = selectedContenedores.size > 0 ?
           `${selectedContenedores.size} seleccionados` : '';
-      } catch (e) {
-        loading.innerText = t("Error al cargar contenedores.");
-      }
+    } catch (e) {
+      loading.innerText = t("Error al cargar contenedores.");
+    }
     }
 
     // Checkbox masivo

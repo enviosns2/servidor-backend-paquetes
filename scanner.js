@@ -24,25 +24,23 @@ const upload = multer({ storage: multer.memoryStorage() });
 // ----------------------------------------
 
 // [POST] /scanner/contenedor/agregar
-// Asocia uno o varios paquetes a un contenedor
 router.post("/contenedor/agregar", async (req, res) => {
-  const { contenedor_id, paquetes } = req.body;
-  // Solo validar que paquetes sea un array, puede estar vacío
-  if (!contenedor_id || !Array.isArray(paquetes)) {
-    return res.status(400).json({ error: "Se requiere contenedor_id y un array de paquetes." });
+  let { contenedor_id, paquetes } = req.body;
+  // Si paquetes viene como undefined, ponlo como array vacío
+  if (!contenedor_id) {
+    return res.status(400).json({ error: "Se requiere contenedor_id." });
   }
+  if (!Array.isArray(paquetes)) paquetes = [];
   try {
     const col = global.db.collection("contenedores");
-    // Si el contenedor no existe, crear con fecha_creacion
     const existe = await col.findOne({ contenedor_id });
     if (!existe) {
       await col.insertOne({
         contenedor_id,
-        paquetes: paquetes,
+        paquetes,
         fecha_creacion: new Date()
       });
     } else {
-      // Si existe, solo agregar paquetes nuevos
       await col.updateOne(
         { contenedor_id },
         { $addToSet: { paquetes: { $each: paquetes } } }
@@ -633,7 +631,8 @@ router.get("/contenedor/all", async (req, res) => {
   try {
     const col = global.db.collection("contenedores");
     const conts = await col.find({}).toArray();
-    res.json(conts);
+    // Siempre retorna un array
+    res.json(Array.isArray(conts) ? conts : []);
   } catch (err) {
     res.status(500).json({ error: "Error al obtener contenedores." });
   }
@@ -684,4 +683,5 @@ router.delete("/contenedor/:id", async (req, res) => {
   }
 });
 
+module.exports = router;
 module.exports = router;
