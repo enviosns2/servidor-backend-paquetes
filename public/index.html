@@ -603,12 +603,12 @@
       statusEl.className = "";
     }
     function updateStatus(msg, cls){
-      statusEl.innerText = msg;
+      statusEl.innerText = t(msg);
       statusEl.className = cls;
       setTimeout(clearStatus, 5000);
     }
     function showToast(msg, type){
-      toast.innerText = msg;
+      toast.innerText = t(msg);
       toast.className = `show ${type}`;
       setTimeout(() => toast.className = "", 3000);
     }
@@ -1433,7 +1433,73 @@
         "Reportar incidencia": "Reportar incidencia",
         "Reportar": "Reportar",
         "Sin comentarios": "Sin comentarios",
-        "Sin adjuntos": "Sin adjuntos"
+        "Sin adjuntos": "Sin adjuntos",
+        "Modo actual:": "Modo actual:",
+        "Operación correcta": "Operación correcta",
+        "Error de red": "Error de red",
+        "Error al crear incidencia": "Error al crear incidencia",
+        "Incidencia creada correctamente": "Incidencia creada correctamente",
+        "Error al eliminar incidencia": "Error al eliminar incidencia",
+        "Incidencia eliminada correctamente": "Incidencia eliminada correctamente",
+        "¿Eliminar": "¿Eliminar",
+        "incidencias?": "incidencias?",
+        "paquetes?": "paquetes?",
+        "Eliminados:": "Eliminados:",
+        "Fallidos:": "Fallidos:",
+        "Contraseña incorrecta": "Contraseña incorrecta",
+        "Introduce la contraseña para eliminar": "Introduce la contraseña para eliminar",
+        "Scanner de rastreo": "Scanner de rastreo",
+        "Buscar ID o paquete...": "Buscar ID o paquete...",
+        "Todos los tipos": "Todos los tipos",
+        "Dañado": "Dañado",
+        "Falta docs": "Falta docs", 
+        "Dirección incorrecta": "Dirección incorrecta",
+        "Cliente ausente": "Cliente ausente",
+        "Otro": "Otro",
+        "Selecciona fase:": "Selecciona fase:",
+        "Recepción": "Recepción",
+        "Tránsito": "Tránsito",
+        "Almacén": "Almacén",
+        "Recibido": "Recibido",
+        "En tránsito nacional MX": "En tránsito nacional MX",
+        "En tránsito nacional EU": "En tránsito nacional EU",
+        "En tránsito internacional": "En tránsito internacional",
+        "En almacén EU": "En almacén EU", 
+        "En almacén MX": "En almacén MX",
+        "Escanea o pega el código:": "Escanea o pega el código:",
+        "Escanea el código aquí": "Escanea el código aquí",
+        "Últimos escaneos": "Últimos escaneos",
+        "ID": "ID",
+        "Tipo": "Type",
+        "Estado": "Status",
+        "Fecha creación": "Creation Date",
+        "Acciones": "Actions",
+        "Ver": "View",
+        "Eliminar": "Delete",
+        "Eliminar seleccionados": "Delete Selected",
+        "seleccionados": "selected",
+        "seleccionadas": "selected",
+        "Abierta": "Open",
+        "En proceso": "In Progress",
+        "Resuelta": "Resolved",
+        "Cerrada": "Closed",
+        "Rechazada": "Rejected",
+        "Sin comentarios": "No comments",
+        "Sin adjuntos": "No attachments",
+        "Modo actual:": "Current mode:",
+        "Operación correcta": "Operation successful",
+        "Error de red": "Network error",
+        "Error al crear incidencia": "Error creating incident",
+        "Incidencia creada correctamente": "Incident created successfully",
+        "Error al eliminar incidencia": "Error deleting incident",
+        "Incidencia eliminada correctamente": "Incident deleted successfully",
+        "¿Eliminar": "Delete",
+        "incidencias?": "incidents?",
+        "paquetes?": "packages?",
+        "Eliminados:": "Deleted:",
+        "Fallidos:": "Failed:",
+        "Contraseña incorrecta": "Incorrect password",
+        "Introduce la contraseña para eliminar": "Enter password to delete"
       },
       en: {
         "Ajustes": "Settings",
@@ -1477,7 +1543,21 @@
         "Reportar incidencia": "Report incident",
         "Reportar": "Report",
         "Sin comentarios": "No comments",
-        "Sin adjuntos": "No attachments"
+        "Sin adjuntos": "No attachments",
+        "Modo actual:": "Current mode:",
+        "Operación correcta": "Operation successful",
+        "Error de red": "Network error",
+        "Error al crear incidencia": "Error creating incident",
+        "Incidencia creada correctamente": "Incident created successfully",
+        "Error al eliminar incidencia": "Error deleting incident", 
+        "Incidencia eliminada correctamente": "Incident deleted successfully",
+        "¿Eliminar": "Delete",
+        "incidencias?": "incidents?",
+        "paquetes?": "packages?",
+        "Eliminados:": "Deleted:",
+        "Fallidos:": "Failed:",
+        "Contraseña incorrecta": "Incorrect password",
+        "Introduce la contraseña para eliminar": "Enter password to delete"
       }
     };
 
@@ -1488,6 +1568,10 @@
     }
 
     function applyTranslations() {
+      // Título de la página
+      document.title = t("Scanner de rastreo");
+      document.querySelector("header h1").innerText = t("Scanner de rastreo");
+      
       // Ajustes
       document.getElementById("settingsTitle").innerText = t("Ajustes");
       document.getElementById("settingsDesc").innerText = t("Configuración y preferencias del sistema.");
