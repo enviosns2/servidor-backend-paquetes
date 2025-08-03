@@ -27,7 +27,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Asocia uno o varios paquetes a un contenedor
 router.post("/contenedor/agregar", async (req, res) => {
   const { contenedor_id, paquetes } = req.body;
-  if (!contenedor_id || !Array.isArray(paquetes) || paquetes.length === 0) {
+  // Solo validar que paquetes sea un array, puede estar vacío
+  if (!contenedor_id || !Array.isArray(paquetes)) {
     return res.status(400).json({ error: "Se requiere contenedor_id y un array de paquetes." });
   }
   try {
@@ -38,7 +39,7 @@ router.post("/contenedor/agregar", async (req, res) => {
       { $addToSet: { paquetes: { $each: paquetes } } },
       { upsert: true }
     );
-    res.json({ message: "Paquetes asociados al contenedor correctamente." });
+    res.json({ message: "Contenedor creado o actualizado correctamente." });
   } catch (err) {
     console.error("Error al asociar paquetes a contenedor:", err);
     res.status(500).json({ error: "Error interno al asociar paquetes a contenedor." });
