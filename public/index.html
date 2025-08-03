@@ -441,13 +441,6 @@
         <h2>Reportes</h2>
         <div id="contenedoresReportes" style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:180px;">
           <button id="btnCrearContenedor" style="margin-bottom:16px;">Crear contenedor</button>
-          <!-- NUEVO: controles de selección múltiple -->
-          <div id="contenedorMultiControls" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;">
-            <input type="checkbox" id="selectAllContChk" style="margin-right:6px;">
-            <label for="selectAllContChk" style="margin-right:12px;">Seleccionar todos</label>
-            <button id="deleteSelectedCont" style="margin-right:12px;">Eliminar seleccionados</button>
-            <span id="contSelCount"></span>
-          </div>
           <p id="contenedoresLoading" style="color:#888;">Cargando contenedores...</p>
           <div id="contenedoresCards" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:12px;"></div>
         </div>
@@ -598,7 +591,6 @@
     // --- Selección múltiple de paquetes ---
     let selectedPaquetes = new Set();
     let selectedIncidencias = new Set();
-    let selectedContenedores = new Set();
 
     // — Referencias DOM —
     const counterEl    = document.getElementById("counter");
@@ -1645,7 +1637,6 @@
     function t(str) { return translations[currentLang][str] || str; }
 
     // Traduce todos los selectores y opciones, incluyendo optgroup y option
-
     function updateSelectors() {
       // Traducir select de fases (escaneo)
       const modeSelect = document.getElementById("modeSelect");
@@ -1766,54 +1757,49 @@
       const cards = document.getElementById("contenedoresCards");
       loading.style.display = "block";
       cards.innerHTML = "";
-      selectedContenedores.clear();
-      // Solo actualiza los controles si existen en el DOM
-      if (document.getElementById("contSelCount")) document.getElementById("contSelCount").innerText = "";
-      if (document.getElementById("selectAllContChk")) document.getElementById("selectAllContChk").checked = false;
       try {
         // Obtener todos los contenedores
         const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/contenedor/all");
         let data = await res.json();
-        // Si el backend retorna un objeto, conviértelo en array
-        if (!Array.isArray(data)) data = [];
         // Ordenar por fecha_creacion descendente (más recientes primero)
-        data = data.filter(c => c && c.contenedor_id).sort((a, b) => new Date(b.fecha_creacion || 0) - new Date(a.fecha_creacion || 0));
-        if (data.length === 0) {
+        data = Array.isArray(data) ? data.sort((a, b) => new Date(b.fecha_creacion || 0) - new Date(a.fecha_creacion || 0)) : [];
+        if (!Array.isArray(data) || data.length === 0) {
           loading.innerText = t("No hay contenedores registrados.");
           return;
         }
         loading.style.display = "none";
         // Para cada contenedor, obtener datos de paquetes y calcular incidencias y antigüedad
         for (const cont of data) {
-          let paquetes = Array.isArray(cont.paquetes) ? cont.paquetes : [];
+          // Obtener detalles de paquetes
+          let paquetes = cont.paquetes || [];
           let paquetesData = [];
           let incidenciasTotales = 0;
           let fechaMasAntigua = null;
           let fechaMasAntiguaStr = "N/A";
           if (paquetes.length > 0) {
-            try {
-              const paquetesRes = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/paquetes/detalles", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paquetes })
-              });
-              paquetesData = await paquetesRes.json();
-            } catch {
-              paquetesData = [];
-            }
+            // Obtener datos de paquetes y sus incidencias
+            const paquetesRes = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/paquetes/detalles", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ paquetes })
+            });
+            paquetesData = await paquetesRes.json();
+            // Calcular incidencias y fecha más antigua
             for (const p of paquetesData) {
               incidenciasTotales += p.incidencias_count || 0;
-              const fecha = new Date(p.fecha_creacion || (p.historial?.[0]?.fecha));
+              const fecha = new Date(p.fecha_creacion || p.historial?.[0]?.fecha);
               if (!fechaMasAntigua || fecha < fechaMasAntigua) fechaMasAntigua = fecha;
             }
             if (fechaMasAntigua) {
               fechaMasAntiguaStr = formatDateTime(fechaMasAntigua.toISOString());
             }
           }
+          // Fecha de creación del contenedor
           let fechaContenedorStr = "N/A";
           if (cont.fecha_creacion) {
             fechaContenedorStr = formatDateTime(cont.fecha_creacion);
           }
+          // Calcular antigüedad
           let tiempo = "N/A";
           if (fechaMasAntigua) {
             const ms = Date.now() - fechaMasAntigua.getTime();
@@ -1821,13 +1807,11 @@
             const horas = Math.floor((ms % (1000*60*60*24)) / (1000*60*60));
             tiempo = dias > 0 ? `${dias}d ${horas}h` : `${horas}h`;
           }
+          // Tarjeta con fechas
           const card = document.createElement("div");
           card.style = "background:#fff;border:1px solid #ccc;border-radius:8px;padding:18px;min-width:220px;max-width:260px;box-shadow:0 2px 8px #0001;display:flex;flex-direction:column;gap:8px;position:relative;";
           card.innerHTML = `
-            <div style="display:flex;align-items:center;gap:8px;">
-              <input type="checkbox" class="sel-cont" data-id="${cont.contenedor_id}" style="margin-right:4px;">
-              <div style="font-weight:bold;font-size:1.1em;">${t("Contenedor")}: ${cont.contenedor_id}</div>
-            </div>
+            <div style="font-weight:bold;font-size:1.1em;">${t("Contenedor")}: ${cont.contenedor_id}</div>
             <div>${t("Paquetes")}: <strong>${paquetes.length}</strong></div>
             <div>${t("Incidencias totales")}: <strong>${incidenciasTotales}</strong></div>
             <div>${t("Antigüedad")}: <strong>${tiempo}</strong></div>
@@ -1850,63 +1834,243 @@
             card.querySelector(".contenedor-paquetes-detalle").style.display = "none";
             card.querySelector(".btn-expand").style.display = "inline-block";
           };
-          // Checkbox individual listener
-          card.querySelector(".sel-cont").addEventListener("change", function(e) {
-            const id = this.dataset.id;
-            if (this.checked) selectedContenedores.add(id);
-            else selectedContenedores.delete(id);
-            if (document.getElementById("contSelCount"))
-              document.getElementById("contSelCount").innerText = selectedContenedores.size > 0 ?
-                `${selectedContenedores.size} seleccionados` : '';
-            const allCards = Array.from(cards.querySelectorAll(".sel-cont"));
-            if (document.getElementById("selectAllContChk"))
-              document.getElementById("selectAllContChk").checked =
-                selectedContenedores.size === allCards.length && allCards.length > 0;
-          });
           cards.appendChild(card);
         }
-        // Actualizar contador si hay selección previa
-        document.getElementById("contSelCount").innerText = selectedContenedores.size > 0 ?
-          `${selectedContenedores.size} seleccionados` : '';
-    } catch (e) {
-      loading.innerText = t("Error al cargar contenedores.");
-    }
+      } catch (e) {
+        loading.innerText = t("Error al cargar contenedores.");
+      }
     }
 
-    // Checkbox masivo
-    document.getElementById("selectAllContChk").onclick = function() {
-      const cards = document.getElementById("contenedoresCards");
-      const allCards = Array.from(cards.querySelectorAll(".sel-cont"));
-      if (selectedContenedores.size === allCards.length && allCards.length > 0) {
-        allCards.forEach(cb => { cb.checked = false; selectedContenedores.delete(cb.dataset.id); });
-      } else {
-        allCards.forEach(cb => { cb.checked = true; selectedContenedores.add(cb.dataset.id); });
+    // --- Modal crear contenedor ---
+    const modalCrearContenedor = document.getElementById("modalCrearContenedor");
+    const btnCrearContenedor = document.getElementById("btnCrearContenedor");
+    const btnCancelarCrearContenedor = document.getElementById("btnCancelarCrearContenedor");
+    const btnGuardarCrearContenedor = document.getElementById("btnGuardarCrearContenedor");
+    const inputNombreContenedor = document.getElementById("inputNombreContenedor");
+
+    btnCrearContenedor.onclick = () => {
+      inputNombreContenedor.value = "";
+      modalCrearContenedor.style.display = "flex";
+    };
+    btnCancelarCrearContenedor.onclick = () => {
+      modalCrearContenedor.style.display = "none";
+    };
+    btnGuardarCrearContenedor.onclick = async () => {
+      const nombre = inputNombreContenedor.value.trim();
+      if (!nombre) {
+        showToast("Debes ingresar un nombre para el contenedor", "error");
+        return;
       }
-      document.getElementById("contSelCount").innerText = selectedContenedores.size > 0 ?
-        `${selectedContenedores.size} seleccionados` : '';
+      try {
+        const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/contenedor/agregar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contenedor_id: nombre, paquetes: [] })
+        });
+        if (res.ok) {
+          showToast("Contenedor creado correctamente", "success");
+          modalCrearContenedor.style.display = "none";
+          loadContenedoresReport();
+        } else {
+          const j = await res.json();
+          showToast(j.error || "Error al crear contenedor", "error");
+        }
+      } catch {
+        showToast("Error de red", "error");
+      }
     };
 
-    // Botón eliminar seleccionados
-    document.getElementById("deleteSelectedCont").onclick = async function() {
-      if (selectedContenedores.size === 0) return showToast("No hay contenedores seleccionados", "error");
-      if (!confirm(`¿Eliminar ${selectedContenedores.size} contenedores?`)) return;
-      const password = prompt("Introduce la contraseña para eliminar los contenedores:");
-      if (!password) return;
-      let ok = 0, fail = 0;
-      for (const id of selectedContenedores) {
-        try {
-          const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/contenedor/${id}`, {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ password })
-          });
-          if (res.ok) ok++; else fail++;
-        } catch { fail++; }
+    // --- Modal agregar a contenedor ---
+    const modalAgregarContenedor = document.getElementById("modalAgregarContenedor");
+    const btnCancelarAgregarContenedor = document.getElementById("btnCancelarAgregarContenedor");
+    const btnGuardarAgregarContenedor = document.getElementById("btnGuardarAgregarContenedor");
+    const selectContenedorDestino = document.getElementById("selectContenedorDestino");
+
+    let paquetesParaAgregar = [];
+
+    // Botón en controles de historial (multi-selección)
+    function renderTable() {
+      const start=(currentPage-1)*pageSize+1;
+      const end=Math.min(currentPage*pageSize,totalItems);
+      counterEl.innerText=`Mostrando ${start}–${end} de ${totalItems} paquetes`;
+
+      const filtered=tableData.filter(r=>!filterText||r.id.toLowerCase().includes(filterText));
+
+      // Encabezado con checkbox
+      scanTbody.parentElement.querySelector("thead")?.remove();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>
+        <th style='width:32px;'><input type='checkbox' id='selectAllPaqChk'></th>
+        <th data-col='time'>${t('Fecha y hora')}</th>
+        <th data-col='id'>${t('Paquete')}</th>
+        <th data-col='new'>${t('Estado nuevo')}</th>
+        <th data-col='prev'>${t('Estado anterior')}</th>
+        <th data-col='inc'>${t('Incidencias')}</th>
+        <th>${t('Acciones')}</th>
+      </tr>`;
+      scanTbody.parentElement.insertBefore(thead, scanTbody);
+
+      scanTbody.innerHTML="";
+      filtered.forEach(r=>{
+        const tr=document.createElement("tr");
+        // Checkbox de selección
+        const tdSel=document.createElement("td");
+        tdSel.style='text-align:center;';
+        tdSel.innerHTML = `<input type='checkbox' class='sel-paq' data-id='${r.id}' ${selectedPaquetes.has(r.id)?'checked':''}>`;
+        tr.appendChild(tdSel);
+        ["time","id","new","prev"].forEach(k=>{
+          const td=document.createElement("td");
+          td.innerText=r[k]; tr.appendChild(td);
+        });
+        const tdInc=document.createElement("td");
+        tdInc.innerHTML=r.inc>0?`<button class="hist-inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
+        tr.appendChild(tdInc);
+        const tdA=document.createElement("td");
+        tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button>
+                       <button class="add-to-cont" data-id="${r.id}">${t("Agregar a contenedor")}</button>
+                       <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
+        tr.appendChild(tdA);
+        tr.addEventListener("click", ()=>{
+          tr.classList.add("highlight");
+          setTimeout(()=>tr.classList.remove("highlight"),500);
+        });
+        scanTbody.appendChild(tr);
+      });
+
+      // Controles de selección múltiple (solo "Eliminar seleccionados" y contador)
+      let controls = document.getElementById("multiPaqControls");
+      if(!controls){
+        controls = document.createElement("div");
+        controls.id = "multiPaqControls";
+        controls.style = "margin-bottom:8px;";
+        scanTbody.parentElement.parentElement.insertBefore(controls, scanTbody.parentElement);
       }
-      showToast(`Eliminados: ${ok}, Fallidos: ${fail}`, (fail === 0 ? "success" : "error"));
-      selectedContenedores.clear();
-      loadContenedoresReport();
+      controls.innerHTML = `<button id='deleteSelectedPaq'>${t('Eliminar seleccionados')}</button>
+                            <button id='addSelectedToCont'>${t('Agregar a contenedor')}</button>
+                            <span id='paqSelCount'></span>`;
+      document.getElementById("deleteSelectedPaq").onclick = async ()=>{
+        if(selectedPaquetes.size===0) return showToast("No hay paquetes seleccionados","error");
+        if(!confirm(`¿Eliminar ${selectedPaquetes.size} paquetes?`)) return;
+        const password = prompt("Introduce la contraseña para eliminar los paquetes:");
+        if(!password) return;
+        let ok=0, fail=0;
+        for(const id of selectedPaquetes){
+          try{
+            const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/paquetes/${id}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password })
+            });
+            if(res.ok) ok++; else fail++;
+          }catch{ fail++; }
+        }
+        showToast(`Eliminados: ${ok}, Fallidos: ${fail}`,(fail===0?"success":"error"));
+        selectedPaquetes.clear();
+        loadPage(currentPage);
+      };
+      document.getElementById("addSelectedToCont").onclick = async ()=>{
+        if(selectedPaquetes.size===0) return showToast("No hay paquetes seleccionados","error");
+        paquetesParaAgregar = Array.from(selectedPaquetes);
+        await abrirModalAgregarContenedor();
+      };
+      document.getElementById("paqSelCount").innerText = selectedPaquetes.size>0 ? 
+        `${selectedPaquetes.size} ${t('seleccionados')}` : '';
+
+      // Checkbox listeners
+      scanTbody.querySelectorAll(".sel-paq").forEach(cb=>{
+        cb.addEventListener("change",e=>{
+          if(e.target.checked) selectedPaquetes.add(e.target.dataset.id);
+          else selectedPaquetes.delete(e.target.dataset.id);
+          document.getElementById("paqSelCount").innerText = selectedPaquetes.size>0 ? 
+            `${selectedPaquetes.size} ${t('seleccionados')}` : '';
+          document.getElementById("selectAllPaqChk").checked = selectedPaquetes.size===filtered.length&&filtered.length>0;
+        });
+      });
+
+      // Selección por checkbox de cabecera
+      document.getElementById("selectAllPaqChk").onclick = ()=>{
+        if(selectedPaquetes.size===filtered.length&&filtered.length>0){
+          filtered.forEach(r=>selectedPaquetes.delete(r.id));
+        }else{
+          filtered.forEach(r=>selectedPaquetes.add(r.id));
+        }
+        renderTable();
+      };
+
+      const totalPages=Math.max(1,Math.ceil(totalItems/pageSize));
+      pageInfo.innerText=`Página ${currentPage} de ${totalPages}`;
+      prevPageBtn.disabled=currentPage===1;
+      nextPageBtn.disabled=currentPage===totalPages;
+    }
+
+    // Botón individual en cada fila
+    scanTbody.addEventListener("click", async e=>{
+      // ...existing code...
+      if(e.target.matches(".add-to-cont")){
+        paquetesParaAgregar = [e.target.dataset.id];
+        abrirModalAgregarContenedor();
+      }
+      // ...existing code...
+    });
+
+    // Abrir modal y cargar contenedores
+    async function abrirModalAgregarContenedor() {
+      selectContenedorDestino.innerHTML = "";
+      try {
+        const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/contenedor/all");
+        const conts = await res.json();
+        conts.forEach(c=>{
+          const opt = document.createElement("option");
+          opt.value = c.contenedor_id;
+          opt.text = c.contenedor_id;
+          selectContenedorDestino.appendChild(opt);
+        });
+        modalAgregarContenedor.style.display = "flex";
+      } catch {
+        showToast("Error al cargar contenedores", "error");
+      }
+    }
+    btnCancelarAgregarContenedor.onclick = () => {
+      modalAgregarContenedor.style.display = "none";
+      paquetesParaAgregar = [];
     };
+    btnGuardarAgregarContenedor.onclick = async () => {
+      const destino = selectContenedorDestino.value;
+      if (!destino) {
+        showToast("Selecciona un contenedor destino", "error");
+        return;
+      }
+      try {
+        const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/contenedor/agregar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contenedor_id: destino, paquetes: paquetesParaAgregar })
+        });
+        if (res.ok) {
+          showToast("Paquetes agregados correctamente", "success");
+          modalAgregarContenedor.style.display = "none";
+          paquetesParaAgregar = [];
+          loadContenedoresReport();
+        } else {
+          const j = await res.json();
+          showToast(j.error || "Error al agregar paquetes", "error");
+        }
+      } catch {
+        showToast("Error de red", "error");
+      }
+    };
+
+    // Traducciones extra
+    translations.es["Agregar a contenedor"] = "Agregar a contenedor";
+    translations.en["Agregar a contenedor"] = "Add to container";
+    translations.es["Selecciona contenedor destino"] = "Selecciona contenedor destino";
+    translations.en["Selecciona contenedor destino"] = "Select destination container";
+    translations.es["Agregar"] = "Agregar";
+    translations.en["Agregar"] = "Add";
+    translations.es["Fecha de creación del contenedor"] = "Fecha de creación del contenedor";
+    translations.en["Fecha de creación del contenedor"] = "Container creation date";
+    translations.es["Fecha del paquete más antiguo"] = "Fecha del paquete más antiguo";
+    translations.en["Fecha del paquete más antiguo"] = "Oldest package date";
   </script>
 </body>
 </html>
