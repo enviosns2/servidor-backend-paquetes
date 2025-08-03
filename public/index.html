@@ -440,6 +440,7 @@
       <section id="view-reportes" style="display:none;">
         <h2>Reportes</h2>
         <div id="contenedoresReportes" style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:180px;">
+          <button id="btnCrearContenedor" style="margin-bottom:16px;">Crear contenedor</button>
           <p id="contenedoresLoading" style="color:#888;">Cargando contenedores...</p>
           <div id="contenedoresCards" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:12px;"></div>
         </div>
@@ -532,6 +533,19 @@
       </div>
       <div class="buttons">
         <button id="detailSaveBtn">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para crear contenedor -->
+  <div id="modalCrearContenedor" class="modal">
+    <div class="modal-content">
+      <h2 id="crearContenedorTitulo">Crear contenedor</h2>
+      <label for="inputNombreContenedor" id="labelNombreContenedor">Nombre del contenedor</label>
+      <input type="text" id="inputNombreContenedor" />
+      <div class="buttons">
+        <button id="btnCancelarCrearContenedor">Cancelar</button>
+        <button id="btnGuardarCrearContenedor">Guardar</button>
       </div>
     </div>
   </div>
@@ -1486,7 +1500,12 @@
         "Incidencias totales": "Incidencias totales",
         "Antigüedad": "Antigüedad",
         "No hay contenedores registrados.": "No hay contenedores registrados.",
-        "Error al cargar contenedores.": "Error al cargar contenedores."
+        "Error al cargar contenedores.": "Error al cargar contenedores.",
+        "Crear contenedor": "Crear contenedor",
+        "Nombre del contenedor": "Nombre del contenedor",
+        "Paquetes integrados": "Paquetes integrados",
+        "Expandir": "Expandir",
+        "Colapsar": "Colapsar"
       },
       en: {
         "Ajustes": "Settings",
@@ -1566,7 +1585,12 @@
         "Incidencias totales": "Total incidents",
         "Antigüedad": "Age",
         "No hay contenedores registrados.": "No containers registered.",
-        "Error al cargar contenedores.": "Error loading containers."
+        "Error al cargar contenedores.": "Error loading containers.",
+        "Crear contenedor": "Create container",
+        "Nombre del contenedor": "Container name",
+        "Paquetes integrados": "Integrated packages",
+        "Expandir": "Expand",
+        "Colapsar": "Collapse"
       }
     };
 
@@ -1648,6 +1672,11 @@
       // Traducir textos de reportes
       document.querySelector("#view-reportes h2").innerText = t("Reportes");
       document.getElementById("contenedoresLoading").innerText = t("Cargando contenedores...");
+      document.getElementById("btnCrearContenedor").innerText = t("Crear contenedor");
+      document.getElementById("crearContenedorTitulo").innerText = t("Crear contenedor");
+      document.getElementById("labelNombreContenedor").innerText = t("Nombre del contenedor");
+      document.getElementById("btnCancelarCrearContenedor").innerText = t("Cancelar");
+      document.getElementById("btnGuardarCrearContenedor").innerText = t("Guardar");
     }
 
     // Al cambiar idioma, traducir todo
@@ -1727,15 +1756,32 @@
             const horas = Math.floor((ms % (1000*60*60*24)) / (1000*60*60));
             tiempo = dias > 0 ? `${dias}d ${horas}h` : `${horas}h`;
           }
-          // Renderizar tarjeta
+          // Tarjeta con botón expandir
           const card = document.createElement("div");
-          card.style = "background:#fff;border:1px solid #ccc;border-radius:8px;padding:18px;min-width:220px;max-width:260px;box-shadow:0 2px 8px #0001;display:flex;flex-direction:column;gap:8px;";
+          card.style = "background:#fff;border:1px solid #ccc;border-radius:8px;padding:18px;min-width:220px;max-width:260px;box-shadow:0 2px 8px #0001;display:flex;flex-direction:column;gap:8px;position:relative;";
           card.innerHTML = `
             <div style="font-weight:bold;font-size:1.1em;">${t("Contenedor")}: ${cont.contenedor_id}</div>
             <div>${t("Paquetes")}: <strong>${paquetes.length}</strong></div>
             <div>${t("Incidencias totales")}: <strong>${incidenciasTotales}</strong></div>
             <div>${t("Antigüedad")}: <strong>${tiempo}</strong></div>
+            <button class="btn-expand" style="margin-top:8px;">${t("Expandir")}</button>
+            <div class="contenedor-paquetes-detalle" style="display:none;margin-top:10px;">
+              <div style="font-weight:bold;margin-bottom:6px;">${t("Paquetes integrados")}:</div>
+              <ul style="padding-left:18px;margin:0;">
+                ${paquetesData.map(p => `<li>${t("Paquete")}: <strong>${p.paquete_id}</strong> (${t("Estado")}: ${t(p.historial?.[p.historial.length-1]?.estado || "")})</li>`).join("")}
+              </ul>
+              <button class="btn-collapse" style="margin-top:8px;">${t("Colapsar")}</button>
+            </div>
           `;
+          // Eventos expandir/colapsar
+          card.querySelector(".btn-expand").onclick = function() {
+            card.querySelector(".contenedor-paquetes-detalle").style.display = "block";
+            this.style.display = "none";
+          };
+          card.querySelector(".btn-collapse").onclick = function() {
+            card.querySelector(".contenedor-paquetes-detalle").style.display = "none";
+            card.querySelector(".btn-expand").style.display = "inline-block";
+          };
           cards.appendChild(card);
         }
       } catch (e) {
@@ -1743,14 +1789,47 @@
       }
     }
 
-    // Endpoint auxiliar para obtener detalles de varios paquetes (debe existir en backend)
-    // POST /scanner/paquetes/detalles  body: { paquetes: [id1, id2, ...] }
+    // --- Modal crear contenedor ---
+    const modalCrearContenedor = document.getElementById("modalCrearContenedor");
+    const btnCrearContenedor = document.getElementById("btnCrearContenedor");
+    const btnCancelarCrearContenedor = document.getElementById("btnCancelarCrearContenedor");
+    const btnGuardarCrearContenedor = document.getElementById("btnGuardarCrearContenedor");
+    const inputNombreContenedor = document.getElementById("inputNombreContenedor");
 
-    // Mostrar reportes al entrar a la vista
-    document.getElementById("nav-reportes").onclick = ()=>{
-      showView("view-reportes");
-      loadContenedoresReport();
+    btnCrearContenedor.onclick = () => {
+      inputNombreContenedor.value = "";
+      modalCrearContenedor.style.display = "flex";
     };
+    btnCancelarCrearContenedor.onclick = () => {
+      modalCrearContenedor.style.display = "none";
+    };
+    btnGuardarCrearContenedor.onclick = async () => {
+      const nombre = inputNombreContenedor.value.trim();
+      if (!nombre) {
+        showToast("Debes ingresar un nombre para el contenedor", "error");
+        return;
+      }
+      try {
+        const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/contenedor/agregar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contenedor_id: nombre, paquetes: [] })
+        });
+        if (res.ok) {
+          showToast("Contenedor creado correctamente", "success");
+          modalCrearContenedor.style.display = "none";
+          loadContenedoresReport();
+        } else {
+          const j = await res.json();
+          showToast(j.error || "Error al crear contenedor", "error");
+        }
+      } catch {
+        showToast("Error de red", "error");
+      }
+    };
+
+    // Inicializar reportes
+    loadContenedoresReport();
   </script>
 </body>
 </html>
