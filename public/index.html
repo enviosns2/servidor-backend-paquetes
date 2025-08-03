@@ -746,12 +746,12 @@
       const thead = document.createElement("thead");
       thead.innerHTML = `<tr>
         <th style='width:32px;'><input type='checkbox' id='selectAllPaqChk'></th>
-        <th data-col='time'>Fecha y hora</th>
-        <th data-col='id'>Paquete</th>
-        <th data-col='new'>Estado nuevo</th>
-        <th data-col='prev'>Estado anterior</th>
-        <th data-col='inc'>Incidencias</th>
-        <th>Acciones</th>
+        <th data-col='time'>${t('Fecha y hora')}</th>
+        <th data-col='id'>${t('Paquete')}</th>
+        <th data-col='new'>${t('Estado nuevo')}</th>
+        <th data-col='prev'>${t('Estado anterior')}</th>
+        <th data-col='inc'>${t('Incidencias')}</th>
+        <th>${t('Acciones')}</th>
       </tr>`;
       scanTbody.parentElement.insertBefore(thead, scanTbody);
 
@@ -852,12 +852,12 @@
       const thead = document.createElement("thead");
       thead.innerHTML = `<tr>
         <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
-        <th data-col='_id'>ID</th>
-        <th data-col='paquete_id'>Paquete</th>
-        <th data-col='tipo'>Tipo</th>
-        <th data-col='estado'>Estado</th>
-        <th data-col='fecha_creacion'>Fecha creación</th>
-        <th>Acciones</th>
+        <th data-col='_id'>${t('ID')}</th>
+        <th data-col='paquete_id'>${t('Paquete')}</th>
+        <th data-col='tipo'>${t('Tipo')}</th>
+        <th data-col='estado'>${t('Estado')}</th>
+        <th data-col='fecha_creacion'>${t('Fecha creación')}</th>
+        <th>${t('Acciones')}</th>
       </tr>`;
       incTbody.parentElement.insertBefore(thead, incTbody);
 
@@ -1121,6 +1121,109 @@
       );
     }
 
+    // Modificar la función renderTable para traducir encabezados
+    function renderTable() {
+      const start=(currentPage-1)*pageSize+1;
+      const end=Math.min(currentPage*pageSize,totalItems);
+      counterEl.innerText=`Mostrando ${start}–${end} de ${totalItems} paquetes`;
+
+      const filtered=tableData.filter(r=>!filterText||r.id.toLowerCase().includes(filterText));
+
+      // Encabezado con checkbox
+      scanTbody.parentElement.querySelector("thead")?.remove();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>
+        <th style='width:32px;'><input type='checkbox' id='selectAllPaqChk'></th>
+        <th data-col='time'>${t('Fecha y hora')}</th>
+        <th data-col='id'>${t('Paquete')}</th>
+        <th data-col='new'>${t('Estado nuevo')}</th>
+        <th data-col='prev'>${t('Estado anterior')}</th>
+        <th data-col='inc'>${t('Incidencias')}</th>
+        <th>${t('Acciones')}</th>
+      </tr>`;
+      scanTbody.parentElement.insertBefore(thead, scanTbody);
+
+      scanTbody.innerHTML="";
+      filtered.forEach(r=>{
+        const tr=document.createElement("tr");
+        // Checkbox de selección
+        const tdSel=document.createElement("td");
+        tdSel.style='text-align:center;';
+        tdSel.innerHTML = `<input type='checkbox' class='sel-paq' data-id='${r.id}' ${selectedPaquetes.has(r.id)?'checked':''}>`;
+        tr.appendChild(tdSel);
+        ["time","id","new","prev"].forEach(k=>{
+          const td=document.createElement("td");
+          td.innerText=r[k]; tr.appendChild(td);
+        });
+        const tdInc=document.createElement("td");
+        tdInc.innerHTML=r.inc>0?`<button class="hist-inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
+        tr.appendChild(tdInc);
+        const tdA=document.createElement("td");
+        tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button> <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
+        tr.appendChild(tdA);
+        scanTbody.appendChild(tr);
+      });
+
+      // Controles de selección múltiple (solo "Eliminar seleccionados" y contador)
+      let controls = document.getElementById("multiPaqControls");
+      if(!controls){
+        controls = document.createElement("div");
+        controls.id = "multiPaqControls";
+        controls.style = "margin-bottom:8px;";
+        scanTbody.parentElement.parentElement.insertBefore(controls, scanTbody.parentElement);
+      }
+      controls.innerHTML = `<button id='deleteSelectedPaq'>${t('Eliminar seleccionados')}</button> <span id='paqSelCount'></span>`;
+      document.getElementById("deleteSelectedPaq").onclick = async ()=>{
+        if(selectedPaquetes.size===0) return showToast("No hay paquetes seleccionados","error");
+        if(!confirm(`¿Eliminar ${selectedPaquetes.size} paquetes?`)) return;
+        const password = prompt("Introduce la contraseña para eliminar los paquetes:");
+        if(!password) return;
+        let ok=0, fail=0;
+        for(const id of selectedPaquetes){
+          try{
+            const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/paquetes/${id}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password })
+            });
+            if(res.ok) ok++; else fail++;
+          }catch{ fail++; }
+        }
+        showToast(`Eliminados: ${ok}, Fallidos: ${fail}`,(fail===0?"success":"error"));
+        selectedPaquetes.clear();
+        loadPage(currentPage);
+      };
+      document.getElementById("paqSelCount").innerText = selectedPaquetes.size>0 ? 
+        `${selectedPaquetes.size} ${t('seleccionados')}` : '';
+
+      // Checkbox listeners
+      scanTbody.querySelectorAll(".sel-paq").forEach(cb=>{
+        cb.addEventListener("change",e=>{
+          if(e.target.checked) selectedPaquetes.add(e.target.dataset.id);
+          else selectedPaquetes.delete(e.target.dataset.id);
+          document.getElementById("paqSelCount").innerText = selectedPaquetes.size>0 ? 
+            `${selectedPaquetes.size} ${t('seleccionados')}` : '';
+          document.getElementById("selectAllPaqChk").checked = selectedPaquetes.size===filtered.length&&filtered.length>0;
+        });
+      });
+
+      // Selección por checkbox de cabecera
+      document.getElementById("selectAllPaqChk").onclick = ()=>{
+        if(selectedPaquetes.size===filtered.length&&filtered.length>0){
+          filtered.forEach(r=>selectedPaquetes.delete(r.id));
+        }else{
+          filtered.forEach(r=>selectedPaquetes.add(r.id));
+        }
+        renderTable();
+      };
+
+      const totalPages=Math.max(1,Math.ceil(totalItems/pageSize));
+      pageInfo.innerText=`Página ${currentPage} de ${totalPages}`;
+      prevPageBtn.disabled=currentPage===1;
+      nextPageBtn.disabled=currentPage===totalPages;
+    }
+
+    // --- Selección múltiple de incidencias ---
     function renderIncTable(){
       const all=filteredInc().sort((a,b)=>{
         const av=a[incSortCol], bv=b[incSortCol];
@@ -1137,11 +1240,11 @@
       const thead = document.createElement("thead");
       thead.innerHTML = `<tr>
         <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
-        <th data-col='_id'>ID</th>
-        <th data-col='paquete_id'>Paquete</th>
-        <th data-col='tipo'>Tipo</th>
-        <th data-col='estado'>Estado</th>
-        <th data-col='fecha_creacion'>Fecha creación</th>
+        <th data-col='_id'>${t('ID')}</th>
+        <th data-col='paquete_id'>${t('Paquete')}</th>
+        <th data-col='tipo'>${t('Tipo')}</th>
+        <th data-col='estado'>${t('Estado')}</th>
+        <th data-col='fecha_creacion'>${t('Fecha creación')}</th>
         <th>${t('Acciones')}</th>
       </tr>`;
       incTbody.parentElement.insertBefore(thead, incTbody);
@@ -1674,7 +1777,10 @@
       localStorage.setItem("lang", currentLang);
       applyTranslations();
       updateSelectors();
-      renderIncTable(); // Re-renderizar tabla con nuevas traducciones
+      
+      // Re-renderizar tablas con nuevas traducciones
+      if(tableData.length > 0) renderTable();
+      if(incData.length > 0) renderIncTable();
     };
 
     // Modificar los selectores para traducir sus opciones
@@ -1705,14 +1811,25 @@
       localStorage.setItem("lang", currentLang);
       applyTranslations();
       updateSelectors();
-      renderIncTable(); // Re-renderizar tabla con nuevas traducciones
+      
+      // Re-renderizar tablas con nuevas traducciones
+      if(tableData.length > 0) renderTable();
+      if(incData.length > 0) renderIncTable();
     });
 
     // Llamar también al cargar la página
     document.addEventListener("DOMContentLoaded", function() {
+      // Recuperar idioma guardado
+      const savedLang = localStorage.getItem("lang");
+      if (savedLang) {
+        currentLang = savedLang;
+        langSelect.value = savedLang;
+      }
+      
       applyTranslations();
       updateSelectors();
-      // Re-renderizar las tablas para actualizar textos
+      
+      // Re-renderizar tablas si hay datos
       if(tableData.length > 0) renderTable();
       if(incData.length > 0) renderIncTable();
     });
