@@ -848,14 +848,15 @@
       // Encabezado con checkbox
       incTbody.parentElement.querySelector("thead")?.remove();
       const thead = document.createElement("thead");
+      // Modificar el thead para usar traducciones
       thead.innerHTML = `<tr>
         <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
         <th data-col='_id'>ID</th>
-        <th data-col='paquete_id'>Paquete</th>
-        <th data-col='tipo'>Tipo</th>
-        <th data-col='estado'>Estado</th>
-        <th data-col='fecha_creacion'>Fecha creación</th>
-        <th>Acciones</th>
+        <th data-col='paquete_id'>${t("Paquete")}</th>
+        <th data-col='tipo'>${t("Tipo")}</th>
+        <th data-col='estado'>${t("Estado")}</th>
+        <th data-col='fecha_creacion'>${t("Fecha creación")}</th>
+        <th>${t("Acciones")}</th>
       </tr>`;
       incTbody.parentElement.insertBefore(thead, incTbody);
 
@@ -878,7 +879,8 @@
         tdDate.innerText=formatDateTime(i.fecha_creacion);
         tr.appendChild(tdDate);
         const tdA=document.createElement("td");
-        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">Ver</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
+        // Modificar los botones de acción
+        tdA.innerHTML = `<button class="view-inc" data-id="${i._id}">${t("Ver")}</button> <button class="delete-inc" data-id="${i._id}">${t("Eliminar")}</button>`;
         tr.appendChild(tdA);
         incTbody.appendChild(tr);
       });
@@ -912,14 +914,14 @@
         selectedIncidencias.clear();
         loadIncidencias();
       };
-      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
+      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} ${t("seleccionadas")}`:'';
 
       // Checkbox listeners
       incTbody.querySelectorAll(".sel-inc").forEach(cb=>{
         cb.addEventListener("change",e=>{
           if(e.target.checked) selectedIncidencias.add(e.target.dataset.id);
           else selectedIncidencias.delete(e.target.dataset.id);
-          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
+          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} ${t("seleccionadas")}`:'';
           document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
         });
       });
@@ -1125,14 +1127,15 @@
       // Encabezado con checkbox
       incTbody.parentElement.querySelector("thead")?.remove();
       const thead = document.createElement("thead");
+      // Modificar el thead para usar traducciones
       thead.innerHTML = `<tr>
         <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
         <th data-col='_id'>ID</th>
-        <th data-col='paquete_id'>Paquete</th>
-        <th data-col='tipo'>Tipo</th>
-        <th data-col='estado'>Estado</th>
-        <th data-col='fecha_creacion'>Fecha creación</th>
-        <th>Acciones</th>
+        <th data-col='paquete_id'>${t("Paquete")}</th>
+        <th data-col='tipo'>${t("Tipo")}</th>
+        <th data-col='estado'>${t("Estado")}</th>
+        <th data-col='fecha_creacion'>${t("Fecha creación")}</th>
+        <th>${t("Acciones")}</th>
       </tr>`;
       incTbody.parentElement.insertBefore(thead, incTbody);
 
@@ -1151,13 +1154,12 @@
         const tdEst=document.createElement("td");
         tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
         tr.appendChild(tdEst);
-
         const tdDate=document.createElement("td");
         tdDate.innerText=formatDateTime(i.fecha_creacion);
         tr.appendChild(tdDate);
-
         const tdA=document.createElement("td");
-        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">Ver</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
+        // Modificar los botones de acción
+        tdA.innerHTML = `<button class="view-inc" data-id="${i._id}">${t("Ver")}</button> <button class="delete-inc" data-id="${i._id}">${t("Eliminar")}</button>`;
         tr.appendChild(tdA);
         incTbody.appendChild(tr);
       });
@@ -1191,14 +1193,14 @@
         selectedIncidencias.clear();
         loadIncidencias();
       };
-      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
+      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} ${t("seleccionadas")}`:'';
 
       // Checkbox listeners
       incTbody.querySelectorAll(".sel-inc").forEach(cb=>{
         cb.addEventListener("change",e=>{
           if(e.target.checked) selectedIncidencias.add(e.target.dataset.id);
           else selectedIncidencias.delete(e.target.dataset.id);
-          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
+          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} ${t("seleccionadas")}`:'';
           document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
         });
       });
