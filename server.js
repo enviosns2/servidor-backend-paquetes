@@ -66,7 +66,11 @@ app.get("/paquetes/:id", async (req, res) => {
       return res.status(404).json({ error: "Paquete no encontrado." });
     }
 
-    res.json(paquete);
+    res.json({
+      ...paquete,
+      agency: paquete.agency || "N/A",
+      destination: paquete.destinationCountry || "N/A"
+    });
   } catch (error) {
     console.error("Error al obtener paquete:", error);
     res.status(500).json({ error: "Error interno del servidor." });

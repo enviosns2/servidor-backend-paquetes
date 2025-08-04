@@ -374,6 +374,12 @@
               <option value="En almacén MX">En almacén MX</option>
             </optgroup>
           </select>
+          <select id="agencyFilter">
+            <option value="">Todas las agencias</option>
+          </select>
+          <select id="destinationFilter">
+            <option value="">Todos los países destino</option>
+          </select>
         </div>
         <table id="scanTable">
           <thead>
@@ -383,6 +389,8 @@
               <th data-col="new">Estado nuevo</th>
               <th data-col="prev">Estado anterior</th>
               <th data-col="inc">Incidencias</th>
+              <th data-col="agency">Agencia</th>
+              <th data-col="destination">País destino</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -415,6 +423,12 @@
             <option value="Cerrada">Cerrada</option>
             <option value="Rechazada">Rechazada</option>
           </select>
+          <select id="agencyFilter">
+            <option value="">Todas las agencias</option>
+          </select>
+          <select id="destinationFilter">
+            <option value="">Todos los países destino</option>
+          </select>
         </div>
         <table id="incTable">
           <thead>
@@ -424,6 +438,8 @@
               <th data-col="tipo">Tipo</th>
               <th data-col="estado">Estado</th>
               <th data-col="fecha_creacion">Fecha creación</th>
+              <th data-col="agency">Agencia</th>
+              <th data-col="destination">País destino</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -582,6 +598,8 @@
     let sortOrder    = "desc";
     let filterText   = "";
     let filterState  = "";
+    let filterAgency = "";
+    let filterDestination = "";
 
     let incData      = [];
     let incSortCol   = "fecha_creacion";
@@ -726,6 +744,8 @@
       currentPage=page;
       let url = `https://servidor-backend-paquetes.onrender.com/scanner/all?page=${page}&pageSize=${pageSize}&sortField=${sortField}&sortOrder=${sortOrder}`;
       if(filterState) url+=`&state=${encodeURIComponent(filterState)}`;
+      if (filterAgency) url += `&agency=${encodeURIComponent(filterAgency)}`;
+      if (filterDestination) url += `&destination=${encodeURIComponent(filterDestination)}`;
       try{
         const resp = await fetch(url);
         const { totalItems: total, page: cur, items } = await resp.json();
@@ -738,7 +758,9 @@
             id:p.paquete_id,
             new:p.estado_actual,
             prev:h.length>1?h[h.length-2].estado:"",
-            inc:p.incidencias_count
+            inc:p.incidencias_count,
+            agency: p.agencia || "N/A",
+            destination: p.pais_destino || "N/A"
           };
         });
         renderTable(); renderMiniTable();
@@ -786,6 +808,8 @@
         <th data-col='new'>${t('Estado nuevo')}</th>
         <th data-col='prev'>${t('Estado anterior')}</th>
         <th data-col='inc'>${t('Incidencias')}</th>
+        <th data-col='agency'>Agencia</th>
+        <th data-col='destination'>País destino</th>
         <th>${t('Acciones')}</th>
       </tr>`;
       scanTbody.parentElement.insertBefore(thead, scanTbody);
@@ -805,6 +829,12 @@
         const tdInc=document.createElement("td");
         tdInc.innerHTML=r.inc>0?`<button class="hist-inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
         tr.appendChild(tdInc);
+        const tdAgency = document.createElement("td");
+        tdAgency.innerText = r.agency || "N/A";
+        tr.appendChild(tdAgency);
+        const tdDestination = document.createElement("td");
+        tdDestination.innerText = r.destination || "N/A";
+        tr.appendChild(tdDestination);
         const tdA=document.createElement("td");
         tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button>
                        <button class="add-to-cont" data-id="${r.id}">${t("Agregar a contenedor")}</button>
@@ -901,6 +931,8 @@
         <th data-col='tipo'>${t('Tipo')}</th>
         <th data-col='estado'>${t('Estado')}</th>
         <th data-col='fecha_creacion'>${t('Fecha creación')}</th>
+        <th data-col='agency'>Agencia</th>
+        <th data-col='destination'>País destino</th>
         <th>${t('Acciones')}</th>
       </tr>`;
       incTbody.parentElement.insertBefore(thead, incTbody);
@@ -928,6 +960,13 @@
         const tdDate=document.createElement("td");
         tdDate.innerText=formatDateTime(i.fecha_creacion);
         tr.appendChild(tdDate);
+
+        const tdAgency = document.createElement("td");
+        tdAgency.innerText = i.agency || "N/A";
+        tr.appendChild(tdAgency);
+        const tdDestination = document.createElement("td");
+        tdDestination.innerText = i.destination || "N/A";
+        tr.appendChild(tdDestination);
 
         const tdA=document.createElement("td");
         tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">${t('Ver incidencia')}</button> <button class="delete-inc" data-id="${i._id}">${t('Eliminar')}</button>`;
@@ -1148,6 +1187,16 @@
         incPage=1;
         renderIncTable();
       });
+    document.getElementById("agencyFilter")
+      .addEventListener("change", e => {
+        filterAgency = e.target.value;
+        loadPage(1);
+      });
+    document.getElementById("destinationFilter")
+      .addEventListener("change", e => {
+        filterDestination = e.target.value;
+        loadPage(1);
+      });
 
     async function loadIncidencias(){
       try{
@@ -1189,6 +1238,8 @@
         <th data-col='tipo'>${t('Tipo')}</th>
         <th data-col='estado'>${t('Estado')}</th>
         <th data-col='fecha_creacion'>${t('Fecha creación')}</th>
+        <th data-col='agency'>Agencia</th>
+        <th data-col='destination'>País destino</th>
         <th>${t('Acciones')}</th>
       </tr>`;
       incTbody.parentElement.insertBefore(thead, incTbody);
@@ -1216,6 +1267,13 @@
         const tdDate=document.createElement("td");
         tdDate.innerText=formatDateTime(i.fecha_creacion);
         tr.appendChild(tdDate);
+
+        const tdAgency = document.createElement("td");
+        tdAgency.innerText = i.agency || "N/A";
+        tr.appendChild(tdAgency);
+        const tdDestination = document.createElement("td");
+        tdDestination.innerText = i.destination || "N/A";
+        tr.appendChild(tdDestination);
 
         const tdA=document.createElement("td");
         tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">${t('Ver incidencia')}</button> <button class="delete-inc" data-id="${i._id}">${t('Eliminar')}</button>`;
@@ -1592,7 +1650,7 @@
         "Descripción": "Description",
         "Adjuntar fotos/documentos": "Attach photos/documents",
         "Cancelar": "Cancel",
-        "Guardar": "Save",
+                             "Guardar": "Save",
         "Detalle de Incidencia": "Incident details",
         "Estado": "Status",
         "Adjuntos existentes": "Existing attachments",
@@ -1970,6 +2028,8 @@
         <th data-col='new'>${t('Estado nuevo')}</th>
         <th data-col='prev'>${t('Estado anterior')}</th>
         <th data-col='inc'>${t('Incidencias')}</th>
+        <th data-col='agency'>Agencia</th>
+        <th data-col='destination'>País destino</th>
         <th>${t('Acciones')}</th>
       </tr>`;
       scanTbody.parentElement.insertBefore(thead, scanTbody);
@@ -1989,6 +2049,12 @@
         const tdInc=document.createElement("td");
         tdInc.innerHTML=r.inc>0?`<button class="hist-inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
         tr.appendChild(tdInc);
+        const tdAgency = document.createElement("td");
+        tdAgency.innerText = r.agency || "N/A";
+        tr.appendChild(tdAgency);
+        const tdDestination = document.createElement("td");
+        tdDestination.innerText = r.destination || "N/A";
+        tr.appendChild(tdDestination);
         const tdA=document.createElement("td");
         tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button>
                        <button class="add-to-cont" data-id="${r.id}">${t("Agregar a contenedor")}</button>

@@ -327,15 +327,15 @@ router.put("/en-almacen-mx", async (req, res) => {
 router.get("/all", async (req, res) => {
   try {
     const estadosCol = global.db.collection("estados");
-    const incCol     = global.db.collection("Incidencias");
+    const incCol = global.db.collection("Incidencias");
 
-    const page     = Math.max(1, parseInt(req.query.page,     10) || 1);
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
 
     const match = {};
-    if (req.query.state) {
-      match.estado_actual = req.query.state;
-    }
+    if (req.query.state) match.estado_actual = req.query.state;
+    if (req.query.agency) match.agency = req.query.agency;
+    if (req.query.destination) match.destinationCountry = req.query.destination;
 
     const pipeline = [
       { $match: match },
@@ -366,9 +366,11 @@ router.get("/all", async (req, res) => {
       { $skip: (page - 1) * pageSize },
       { $limit: pageSize },
       { $project: {
-          paquete_id:     1,
-          estado_actual:  1,
-          historial:      1
+          paquete_id: 1,
+          estado_actual: 1,
+          historial: 1,
+          agency: 1,
+          destinationCountry: 1
         }
       }
     ];
@@ -381,9 +383,11 @@ router.get("/all", async (req, res) => {
     const items = await Promise.all(docs.map(async doc => {
       const cnt = await incCol.countDocuments({ paquete_id: doc.paquete_id });
       return {
-        paquete_id:        doc.paquete_id,
-        estado_actual:     doc.estado_actual,
-        historial:         doc.historial,
+        paquete_id: doc.paquete_id,
+        estado_actual: doc.estado_actual,
+        historial: doc.historial,
+        agency: doc.agency,
+        destination: doc.destinationCountry,
         incidencias_count: cnt
       };
     }));
@@ -449,8 +453,12 @@ router.post("/incidencias", upload.array("adjuntos"), async (req, res) => {
 // Listar todas las incidencias
 router.get("/incidencias", async (req, res) => {
   try {
-    const collection  = global.db.collection("Incidencias");
-    const incidencias = await collection.find({}).toArray();
+    const collection = global.db.collection("Incidencias");
+    const match = {};
+    if (req.query.agency) match.agency = req.query.agency;
+    if (req.query.destination) match.destinationCountry = req.query.destination;
+
+    const incidencias = await collection.find(match).toArray();
     res.json(incidencias);
   } catch (err) {
     console.error("Error al obtener incidencias:", err);
