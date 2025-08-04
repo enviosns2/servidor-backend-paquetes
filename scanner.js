@@ -343,7 +343,7 @@ router.get("/all", async (req, res) => {
           historial: {
             $map: {
               input: "$historial",
-              as:   "h",
+              as: "h",
               in: {
                 estado: "$$h.estado",
                 fecha: {

@@ -749,22 +749,24 @@
       try{
         const resp = await fetch(url);
         const { totalItems: total, page: cur, items } = await resp.json();
-        totalItems=total; currentPage=cur;
-        tableData=items.map(p=>{
-          const h=p.historial;
+        totalItems = total;
+        currentPage = cur;
+        tableData = items.map(p => {
+          const h = p.historial;
           return {
-            timeISO:h[h.length-1].fecha,
-            time:formatDateTime(h[h.length-1].fecha),
-            id:p.paquete_id,
-            new:p.estado_actual,
-            prev:h.length>1?h[h.length-2].estado:"",
-            inc:p.incidencias_count,
-            agency: p.agencia || "N/A",
-            destination: p.pais_destino || "N/A"
+            timeISO: h[h.length - 1].fecha,
+            time: formatDateTime(h[h.length - 1].fecha),
+            id: p.paquete_id,
+            new: p.estado_actual,
+            prev: h.length > 1 ? h[h.length - 2].estado : "",
+            inc: p.incidencias_count,
+            agency: p.agency || "N/A",
+            destination: p.destination || "N/A"
           };
         });
-        renderTable(); renderMiniTable();
-      } catch(e){
+        renderTable();
+        renderMiniTable();
+      } catch (e) {
         console.error("Error cargando historial:", e);
       }
     }
