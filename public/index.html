@@ -2188,17 +2188,135 @@
       }
     };
 
-    // Traducciones extra
-    translations.es["Agregar a contenedor"] = "Agregar a contenedor";
-    translations.en["Agregar a contenedor"] = "Add to container";
-    translations.es["Selecciona contenedor destino"] = "Selecciona contenedor destino";
-    translations.en["Selecciona contenedor destino"] = "Select destination container";
-    translations.es["Agregar"] = "Agregar";
-    translations.en["Agregar"] = "Add";
-    translations.es["Fecha de creación del contenedor"] = "Fecha de creación del contenedor";
-    translations.en["Fecha de creación del contenedor"] = "Container creation date";
-    translations.es["Fecha del paquete más antiguo"] = "Fecha del paquete más antiguo";
-    translations.en["Fecha del paquete más antiguo"] = "Oldest package date";
+    // --- NUEVO: Carga dinámica de agencias y países destino ---
+    async function loadAgencyAndDestinationOptions() {
+      // Obtener agencias y destinos únicos del backend
+      try {
+        const resp = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/all?onlyOptions=1");
+        const { agencies, destinations } = await resp.json();
+
+        // Historial
+        const agencyFilter = document.getElementById("agencyFilter");
+        agencyFilter.innerHTML = `<option value="">${t("Todas las agencias")}</option>` +
+          agencies.map(a => `<option value="${a}">${a}</option>`).join("");
+        const destinationFilter = document.getElementById("destinationFilter");
+        destinationFilter.innerHTML = `<option value="">${t("Todos los países destino")}</option>` +
+          destinations.map(d => `<option value="${d}">${d}</option>`).join("");
+
+        // Incidencias
+        const incAgencyFilter = document.getElementById("agencyFilter");
+        incAgencyFilter.innerHTML = `<option value="">${t("Todas las agencias")}</option>` +
+          agencies.map(a => `<option value="${a}">${a}</option>`).join("");
+        const incDestinationFilter = document.getElementById("destinationFilter");
+        incDestinationFilter.innerHTML = `<option value="">${t("Todos los países destino")}</option>` +
+          destinations.map(d => `<option value="${d}">${d}</option>`).join("");
+      } catch (e) {
+        // Si falla, deja solo la opción por defecto
+        ["agencyFilter","destinationFilter"].forEach(id=>{
+          document.getElementById(id).innerHTML = `<option value="">${t(id==="agencyFilter"?"Todas las agencias":"Todos los países destino")}</option>`;
+        });
+      }
+    }
+
+    // --- NUEVO: Mostrar filtros activos y botón limpiar ---
+    function renderActiveFilters() {
+      const container = document.getElementById("activeFilters");
+      if (!container) {
+        // Crear el contenedor si no existe
+        const div = document.createElement("div");
+        div.id = "activeFilters";
+        div.style = "margin-bottom:8px;font-weight:bold;";
+        document.getElementById("tableControls").parentElement.insertBefore(div, document.getElementById("tableControls"));
+      }
+      let txt = "";
+      if (filterAgency) txt += `${t("Filtrando por Agencia")}: ${filterAgency} `;
+      if (filterDestination) txt += `${t("País destino")}: ${filterDestination} `;
+      if (txt) {
+        document.getElementById("activeFilters").innerHTML =
+          `${txt}<button id="clearFiltersBtn" style="margin-left:12px;">${t("Limpiar filtros")}</button>`;
+        document.getElementById("clearFiltersBtn").onclick = () => {
+          filterAgency = "";
+          filterDestination = "";
+          document.getElementById("agencyFilter").value = "";
+          document.getElementById("destinationFilter").value = "";
+          loadPage(1);
+        };
+      } else {
+        document.getElementById("activeFilters").innerHTML = "";
+      }
+    }
+
+    // --- MODIFICAR: recargar opciones y mostrar filtros activos al renderizar historial ---
+    async function loadPage(page=1){
+      await loadAgencyAndDestinationOptions();
+      currentPage=page;
+      let url = `https://servidor-backend-paquetes.onrender.com/scanner/all?page=${page}&pageSize=${pageSize}&sortField=${sortField}&sortOrder=${sortOrder}`;
+      if(filterState) url+=`&state=${encodeURIComponent(filterState)}`;
+      if (filterAgency) url += `&agency=${encodeURIComponent(filterAgency)}`;
+      if (filterDestination) url += `&destination=${encodeURIComponent(filterDestination)}`;
+      try{
+        const resp = await fetch(url);
+        const { totalItems: total, page: cur, items } = await resp.json();
+        totalItems = total;
+        currentPage = cur;
+        tableData = items.map(p => {
+          const h = p.historial;
+          return {
+            timeISO: h[h.length - 1].fecha,
+            time: formatDateTime(h[h.length - 1].fecha),
+            id: p.paquete_id,
+            new: p.estado_actual,
+            prev: h.length > 1 ? h[h.length - 2].estado : "",
+            inc: p.incidencias_count,
+            agency: p.agency || "N/A",
+            destination: p.destination || "N/A"
+          };
+        });
+        renderTable();
+        renderMiniTable();
+      } catch (e) {
+        console.error("Error cargando historial:", e);
+      }
+      renderActiveFilters();
+    }
+
+    // --- MODIFICAR: recargar opciones y mostrar filtros activos al renderizar incidencias ---
+    async function loadIncidencias(){
+      await loadAgencyAndDestinationOptions();
+      try{
+        const r=await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias");
+        incData=await r.json();
+        incPage=1;
+        renderIncTable();
+      } catch(e){
+        console.error("Error cargando incidencias:", e);
+      }
+      renderActiveFilters();
+    }
+
+    // --- MODIFICAR: listeners de filtros para recargar tabla y mostrar filtros activos ---
+    document.getElementById("agencyFilter")
+      .addEventListener("change", e => {
+        filterAgency = e.target.value;
+        loadPage(1);
+        renderActiveFilters();
+      });
+    document.getElementById("destinationFilter")
+      .addEventListener("change", e => {
+        filterDestination = e.target.value;
+        loadPage(1);
+        renderActiveFilters();
+      });
+
+    // --- Traducciones extra ---
+    translations.es["Filtrando por Agencia"] = "Filtrando por Agencia";
+    translations.en["Filtrando por Agencia"] = "Filtering by Agency";
+    translations.es["Limpiar filtros"] = "Limpiar filtros";
+    translations.en["Limpiar filtros"] = "Clear filters";
+    translations.es["País destino"] = "País destino";
+    translations.en["País destino"] = "Destination country";
+    translations.es["Todos los países destino"] = "Todos los países destino";
+    translations.en["Todos los países destino"] = "All destination countries";
   </script>
 </body>
 </html>

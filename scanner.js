@@ -329,6 +329,19 @@ router.get("/all", async (req, res) => {
     const estadosCol = global.db.collection("estados");
     const incCol = global.db.collection("Incidencias");
 
+    // NUEVO: Si solo se piden opciones únicas para filtros
+    if (req.query.onlyOptions === "1") {
+      // Obtener agencias y destinos únicos
+      const agencies = await estadosCol.distinct("agency");
+      const destinations = await estadosCol.distinct("destinationCountry");
+      // Filtrar nulos/vacíos
+      res.json({
+        agencies: agencies.filter(a => a && a !== ""),
+        destinations: destinations.filter(d => d && d !== "")
+      });
+      return;
+    }
+
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
 
