@@ -457,10 +457,12 @@
       <section id="view-contenedores" style="display:none;">
         <h2>Contenedores</h2>
         <div id="contenedoresReportes" style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:180px;">
-          <div style="margin-bottom:16px;">
+          <div style="margin-bottom:16px; display:flex; align-items:center; gap:10px;">
             <button id="btnCrearContenedor">Crear contenedor</button>
             <button id="btnEliminarContenedores" style="margin-left:8px;">Eliminar seleccionados</button>
             <span id="contSelCount"></span>
+            <!-- NUEVO: Botón actualizar estado de contenedor -->
+            <button id="btnUpdateContStatus" style="margin-left:8px;">Update container status</button>
           </div>
           <p id="contenedoresLoading" style="color:#888;">Cargando contenedores...</p>
           <div id="contenedoresCards" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:12px;"></div>
@@ -584,6 +586,35 @@
     </div>
   </div>
 
+  <!-- NUEVO: Modal para actualizar estado de contenedor -->
+  <div id="modalUpdateContStatus" class="modal">
+    <div class="modal-content" style="max-width:420px;">
+      <h2 id="updateContStatusTitle">Actualizar estado de contenedor</h2>
+      <label for="updateContStatusPhase" id="updateContStatusPhaseLabel">Select Phase</label>
+      <select id="updateContStatusPhase">
+        <optgroup label="Recepción">
+          <option value="Recibido">Recibido</option>
+        </optgroup>
+        <optgroup label="Tránsito">
+          <option value="En tránsito nacional MX">En tránsito nacional MX</option>
+          <option value="En tránsito nacional EU">En tránsito nacional EU</option>
+          <option value="En tránsito internacional">En tránsito internacional</option>
+        </optgroup>
+        <optgroup label="Almacén">
+          <option value="En almacén EU">En almacén EU</option>
+          <option value="En almacén MX">En almacén MX</option>
+        </optgroup>
+      </select>
+      <label for="updateContStatusSelect" id="updateContStatusSelectLabel">Select Container</label>
+      <select id="updateContStatusSelect"></select>
+      <div id="updateContStatusError" style="color:red;min-height:18px;margin-top:8px;"></div>
+      <div class="buttons" style="margin-top:18px;gap:10px;">
+        <button id="btnCancelUpdateContStatus">Cancelar</button>
+        <button id="btnConfirmUpdateContStatus">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <script>
@@ -614,6 +645,7 @@
     // --- Selección múltiple de paquetes ---
     let selectedPaquetes = new Set();
     let selectedIncidencias = new Set();
+    let selectedContenedores = new Set();
 
     // — Referencias DOM —
     const counterEl    = document.getElementById("counter");
@@ -1751,6 +1783,17 @@
       Array.from(detailStateSelect.options).forEach(opt => {
         opt.text = t(opt.text);
       });
+
+      // Modal actualizar estado de contenedor
+      const updateContStatusPhase = document.getElementById("updateContStatusPhase");
+      Array.from(updateContStatusPhase.children).forEach(optgroup => {
+        if (optgroup.tagName === "OPTGROUP") {
+          optgroup.label = t(optgroup.label);
+          Array.from(optgroup.children).forEach(option => {
+            option.text = t(option.text);
+          });
+        }
+      });
     }
 
     // Traduce todos los textos visibles y placeholders
@@ -1787,6 +1830,13 @@
       document.getElementById("labelContenedorDestino").innerText = t("Selecciona contenedor destino");
       document.getElementById("btnCancelarAgregarContenedor").innerText = t("Cancelar");
       document.getElementById("btnGuardarAgregarContenedor").innerText = t("Agregar");
+      // Modal actualizar estado de contenedor
+      document.getElementById("btnUpdateContStatus").innerText = t("Update container status");
+      document.getElementById("updateContStatusTitle").innerText = t("Actualizar estado de contenedor");
+      document.getElementById("updateContStatusPhaseLabel").innerText = t("Select Phase");
+      document.getElementById("updateContStatusSelectLabel").innerText = t("Select Container");
+      document.getElementById("btnCancelUpdateContStatus").innerText = t("Cancelar");
+      document.getElementById("btnConfirmUpdateContStatus").innerText = t("Confirmar");
     }
 
     // Al cambiar idioma, traducir todo
@@ -1818,8 +1868,6 @@
     });
 
     // --- Reportes: cargar contenedores siempre y ordenar por fecha más reciente ---
-    let selectedContenedores = new Set();
-
     async function loadContenedoresReport() {
       const loading = document.getElementById("contenedoresLoading");
       const cards = document.getElementById("contenedoresCards");
@@ -1952,20 +2000,6 @@
       selectedContenedores.clear();
       loadContenedoresReport();
     };
-
-    // Añadir traducciones necesarias
-    translations.es["No hay contenedores seleccionados"] = "No hay contenedores seleccionados";
-    translations.en["No hay contenedores seleccionados"] = "No containers selected";
-    translations.es["¿Eliminar"] = "¿Eliminar";
-    translations.en["¿Eliminar"] = "Delete";
-    translations.es["contenedores?"] = "contenedores?";
-    translations.en["contenedores?"] = "containers?";
-    translations.es["Introduce la contraseña para eliminar los contenedores:"] = "Introduce la contraseña para eliminar los contenedores:";
-    translations.en["Introduce la contraseña para eliminar los contenedores:"] = "Enter password to delete containers:";
-    translations.es["Eliminados"] = "Eliminados";
-    translations.en["Eliminados"] = "Deleted";
-    translations.es["Fallidos"] = "Fallidos"; 
-    translations.en["Fallidos"] = "Failed";
 
     // --- Modal crear contenedor ---
     const modalCrearContenedor = document.getElementById("modalCrearContenedor");
@@ -2149,7 +2183,7 @@
       try {
         const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/contenedor/all");
         const conts = await res.json();
-        conts.forEach(c=>{
+        conts.forEach(c => {
           const opt = document.createElement("option");
           opt.value = c.contenedor_id;
           opt.text = c.contenedor_id;
@@ -2286,6 +2320,101 @@
     translations.en["Todas las agencias"] = "All agencies";
     translations.es["Todos los países destino"] = "Todos los países destino";
     translations.en["Todos los países destino"] = "All destination countries";
+
+    // --- NUEVO: Actualizar estado de contenedor ---
+    const btnUpdateContStatus = document.getElementById("btnUpdateContStatus");
+    const modalUpdateContStatus = document.getElementById("modalUpdateContStatus");
+    const updateContStatusPhase = document.getElementById("updateContStatusPhase");
+    const updateContStatusSelect = document.getElementById("updateContStatusSelect");
+    const updateContStatusError = document.getElementById("updateContStatusError");
+    const btnCancelUpdateContStatus = document.getElementById("btnCancelUpdateContStatus");
+    const btnConfirmUpdateContStatus = document.getElementById("btnConfirmUpdateContStatus");
+
+    btnUpdateContStatus.onclick = async () => {
+      updateContStatusError.innerText = "";
+      // Cargar contenedores en tiempo real
+      updateContStatusSelect.innerHTML = "";
+      try {
+        const res = await fetch("https://servidor-backend-paquetes.onrender.com/scanner/contenedor/all");
+        const conts = await res.json();
+        conts.forEach(c => {
+          const opt = document.createElement("option");
+          opt.value = c.contenedor_id;
+          opt.text = c.contenedor_id;
+          updateContStatusSelect.appendChild(opt);
+        });
+      } catch {
+        updateContStatusError.innerText = t("Error al cargar contenedores.");
+      }
+      modalUpdateContStatus.style.display = "flex";
+    };
+
+    btnCancelUpdateContStatus.onclick = () => {
+      modalUpdateContStatus.style.display = "none";
+      updateContStatusError.innerText = "";
+    };
+
+    btnConfirmUpdateContStatus.onclick = async () => {
+      updateContStatusError.innerText = "";
+      const containerId = updateContStatusSelect.value;
+      const newStatus = updateContStatusPhase.value;
+      if (!containerId || !newStatus) {
+        updateContStatusError.innerText = t("Selecciona fase y contenedor.");
+        return;
+      }
+      // Prompt de contraseña
+      const password = prompt(t("Introduce la contraseña para actualizar el estado:"));
+      if (!password) return; // No mostrar error si cancela prompt
+      // PATCH al backend
+      try {
+        const res = await fetch(`https://servidor-backend-paquetes.onrender.com/containers/${containerId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            containerId,
+            newStatus,
+            password
+          })
+        });
+        const j = await res.json();
+        if (res.ok) {
+          modalUpdateContStatus.style.display = "none";
+          showToast(`${t("Container")} ${containerId} ${t("updated to")} “${t(newStatus)}”`, "success");
+          loadContenedoresReport();
+        } else {
+          updateContStatusError.innerText = j.error || t("Error al actualizar estado.");
+        }
+      } catch {
+        updateContStatusError.innerText = t("Error de red");
+      }
+    };
+
+    // Traducciones para el nuevo modal y botón
+    translations.es["Update container status"] = "Actualizar estado de contenedor";
+    translations.en["Update container status"] = "Update container status";
+    translations.es["Actualizar estado de contenedor"] = "Actualizar estado de contenedor";
+    translations.en["Actualizar estado de contenedor"] = "Update container status";
+    translations.es["Select Phase"] = "Selecciona fase";
+    translations.en["Select Phase"] = "Select Phase";
+    translations.es["Select Container"] = "Selecciona contenedor";
+    translations.en["Select Container"] = "Select Container";
+    translations.es["Confirmar"] = "Confirmar";
+    translations.en["Confirmar"] = "Confirm";
+    translations.es["Contraseña incorrecta"] = "Contraseña incorrecta";
+    translations.en["Contraseña incorrecta"] = "Incorrect password";
+    translations.es["Container"] = "Contenedor";
+    translations.en["Container"] = "Container";
+    translations.es["updated to"] = "actualizado a";
+    translations.en["updated to"] = "updated to";
+
+    // — Inicialización de eventos y carga inicial —
+    document.addEventListener("DOMContentLoaded", function() {
+      // ...existing code...
+      // Si la vista inicial es contenedores, cargar contenedores
+      if (document.getElementById("view-contenedores").style.display !== "none") {
+        loadContenedoresReport();
+      }
+    });
   </script>
 </body>
 </html>
