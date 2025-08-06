@@ -307,7 +307,7 @@
         <a href="#" id="nav-escaneo"><span class="icon">🔍</span>Escaneo</a>
         <a href="#" id="nav-historial"><span class="icon">📜</span>Historial</a>
         <a href="#" id="nav-incidencias"><span class="icon">⚠️</span>Incidencias</a>
-        <a href="#" id="nav-reportes"><span class="icon">📊</span>Reportes</a>
+        <a href="#" id="nav-contenedores"><span class="icon">📦</span>Contenedores</a>
         <a href="#" id="nav-ajustes"><span class="icon">⚙️</span>Ajustes</a>
       </nav>
     </aside>
@@ -453,9 +453,9 @@
         </div>
       </section>
 
-      <!-- REPORTES -->
-      <section id="view-reportes" style="display:none;">
-        <h2>Reportes</h2>
+      <!-- CONTENEDORES (antes Reportes) -->
+      <section id="view-contenedores" style="display:none;">
+        <h2>Contenedores</h2>
         <div id="contenedoresReportes" style="background:#f9f9f9; border:1px solid #ddd; padding:24px; border-radius:6px; min-height:180px;">
           <div style="margin-bottom:16px;">
             <button id="btnCrearContenedor">Crear contenedor</button>
@@ -673,12 +673,12 @@
 
     // — Manejo de vistas —
     function showView(v){
-      ["view-escaneo","view-historial","view-incidencias","view-reportes","view-ajustes"]
+      ["view-escaneo","view-historial","view-incidencias","view-contenedores","view-ajustes"]
         .forEach(id =>
           document.getElementById(id).style.display = id===v?"block":"none"
         );
-      // Cargar contenedores al mostrar reportes
-      if (v === "view-reportes") {
+      // Cargar contenedores al mostrar contenedores
+      if (v === "view-contenedores") {
         loadContenedoresReport();
       }
     }
@@ -688,7 +688,7 @@
       showView("view-incidencias");
       loadIncidencias();
     };
-    document.getElementById("nav-reportes").onclick = ()=>showView("view-reportes");
+    document.getElementById("nav-contenedores").onclick = ()=>showView("view-contenedores");
     document.getElementById("nav-ajustes").onclick  = ()=>showView("view-ajustes");
 
     // — Scanner widget —
@@ -1525,7 +1525,7 @@
         "Escaneo": "Escaneo",
         "Historial": "Historial",
         "Incidencias": "Incidencias",
-        "Reportes": "Reportes",
+        "Contenedores": "Contenedores",
         "Scanner de rastreo": "Scanner de rastreo",
         "Selecciona fase:": "Selecciona fase:",
         "Recepción": "Recepción",
@@ -1615,7 +1615,7 @@
         "Escaneo": "Scan",
         "Historial": "History",
         "Incidencias": "Incidents",
-        "Reportes": "Reports",
+        "Contenedores": "Containers",
         "Scanner de rastreo": "Tracking scanner",
         "Selecciona fase:": "Select phase:",
         "Recepción": "Reception",
@@ -1768,14 +1768,14 @@
       document.getElementById("nav-escaneo").innerHTML = `<span class="icon">🔍</span>${t("Escaneo")}`;
       document.getElementById("nav-historial").innerHTML = `<span class="icon">📜</span>${t("Historial")}`;
       document.getElementById("nav-incidencias").innerHTML = `<span class="icon">⚠️</span>${t("Incidencias")}`;
-      document.getElementById("nav-reportes").innerHTML = `<span class="icon">📊</span>${t("Reportes")}`;
+      document.getElementById("nav-contenedores").innerHTML = `<span class="icon">📦</span>${t("Contenedores")}`;
       document.getElementById("nav-ajustes").innerHTML = `<span class="icon">⚙️</span>${t("Ajustes")}`;
       // Placeholders y botones
       document.getElementById("barcodeInput").placeholder = t("Escanea el código aquí");
       document.getElementById("searchInput").placeholder = t("Buscar paquete…");
       document.getElementById("incSearch").placeholder = t("Buscar paquete…");
-      // Traducir textos de reportes
-      document.querySelector("#view-reportes h2").innerText = t("Reportes");
+      // Traducir textos de contenedores
+      document.querySelector("#view-contenedores h2").innerText = t("Contenedores");
       document.getElementById("contenedoresLoading").innerText = t("Cargando contenedores...");
       document.getElementById("btnCrearContenedor").innerText = t("Crear contenedor");
       document.getElementById("crearContenedorTitulo").innerText = t("Crear contenedor");
@@ -1803,7 +1803,7 @@
       loadContenedoresReport(); // <-- recarga los contenedores en el idioma seleccionado
     };
 
-    // Al cargar la página, cargar contenedores si la vista es reportes
+    // Al cargar la página, cargar contenedores si la vista es contenedores
     document.addEventListener("DOMContentLoaded", function() {
       currentLang = localStorage.getItem("lang") || "es";
       document.getElementById("langSelect").value = currentLang;
@@ -1811,8 +1811,8 @@
       updateSelectors();
       if(tableData.length > 0) renderTable();
       if(incData.length > 0) renderIncTable();
-      // Si la vista inicial es reportes, cargar contenedores
-      if (document.getElementById("view-reportes").style.display !== "none") {
+      // Si la vista inicial es contenedores, cargar contenedores
+      if (document.getElementById("view-contenedores").style.display !== "none") {
         loadContenedoresReport();
       }
     });
