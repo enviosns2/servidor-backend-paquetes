@@ -704,5 +704,42 @@ router.delete("/contenedor/:id", async (req, res) => {
   }
 });
 
+// --- NUEVO: Actualizar estado de todos los paquetes de un contenedor con validación de contraseña ---
+router.patch("/containers/:id/status", async (req, res) => {
+  const { newStatus, password } = req.body;
+  const containerId = req.params.id; // Usar el parámetro de la URL
+  // Validar campos
+  if (!containerId || !newStatus || !password) {
+    return res.status(400).json({ error: "Faltan datos requeridos." });
+  }
+  if (password !== "2003") {
+    return res.status(403).json({ error: "Contraseña incorrecta" });
+  }
+  try {
+    const colCont = global.db.collection("contenedores");
+    const colPaq  = global.db.collection("estados");
+    const cont = await colCont.findOne({ contenedor_id: containerId });
+    if (!cont || !Array.isArray(cont.paquetes) || cont.paquetes.length === 0) {
+      return res.status(404).json({ error: "Contenedor no encontrado o sin paquetes asociados." });
+    }
+    const fecha = new Date();
+    // Actualiza todos los paquetes asociados
+    const result = await colPaq.updateMany(
+      { paquete_id: { $in: cont.paquetes } },
+      {
+        $set: { estado_actual: newStatus },
+        $push: { historial: { estado: newStatus, fecha } }
+      }
+    );
+    res.json({
+      message: `Container ${containerId} updated to “${newStatus}”`,
+      paquetes_actualizados: result.modifiedCount
+    });
+  } catch (err) {
+    console.error("Error al actualizar estado de contenedor:", err);
+    res.status(500).json({ error: "Error interno al actualizar estado de contenedor." });
+  }
+});
+
 module.exports = router;
 module.exports = router;
