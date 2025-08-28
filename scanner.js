@@ -321,6 +321,110 @@ router.put("/en-almacen-mx", async (req, res) => {
   }
 });
 
+// [PUT] /scanner/en-transito-nacional-gt
+router.put("/en-transito-nacional-gt", async (req, res) => {
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const col = global.db.collection("estados");
+    const p = await col.findOne({ paquete_id });
+    if (!p) return res.status(404).json({ error: "El paquete no existe en la base de datos." });
+    const fecha = new Date();
+    const { modifiedCount } = await col.updateOne(
+      { paquete_id },
+      {
+        $set: { estado_actual: "En tránsito nacional GT" },
+        $push: { historial: { estado: "En tránsito nacional GT", fecha } }
+      }
+    );
+    if (!modifiedCount) return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
+    res.json({ message: "Paquete marcado como 'En tránsito nacional GT' correctamente." });
+  } catch (err) {
+    console.error("Error en el servidor:", err.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
+});
+
+// [PUT] /scanner/en-transito-nacional-sv
+router.put("/en-transito-nacional-sv", async (req, res) => {
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const col = global.db.collection("estados");
+    const p = await col.findOne({ paquete_id });
+    if (!p) return res.status(404).json({ error: "El paquete no existe en la base de datos." });
+    const fecha = new Date();
+    const { modifiedCount } = await col.updateOne(
+      { paquete_id },
+      {
+        $set: { estado_actual: "En tránsito nacional SV" },
+        $push: { historial: { estado: "En tránsito nacional SV", fecha } }
+      }
+    );
+    if (!modifiedCount) return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
+    res.json({ message: "Paquete marcado como 'En tránsito nacional SV' correctamente." });
+  } catch (err) {
+    console.error("Error en el servidor:", err.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
+});
+
+// [PUT] /scanner/en-almacen-gt
+router.put("/en-almacen-gt", async (req, res) => {
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const col = global.db.collection("estados");
+    const p = await col.findOne({ paquete_id });
+    if (!p) return res.status(404).json({ error: "El paquete no existe en la base de datos." });
+    const fecha = new Date();
+    const { modifiedCount } = await col.updateOne(
+      { paquete_id },
+      {
+        $set: { estado_actual: "En almacén GT" },
+        $push: { historial: { estado: "En almacén GT", fecha } }
+      }
+    );
+    if (!modifiedCount) return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
+    res.json({ message: "Paquete marcado como 'En almacén GT' correctamente." });
+  } catch (err) {
+    console.error("Error en el servidor:", err.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
+});
+
+// [PUT] /scanner/en-almacen-sv
+router.put("/en-almacen-sv", async (req, res) => {
+  const { paquete_id } = req.body;
+  if (!paquete_id || typeof paquete_id !== "string") {
+    return res.status(400).json({ error: "El campo 'paquete_id' es requerido y debe ser un string válido." });
+  }
+  try {
+    const col = global.db.collection("estados");
+    const p = await col.findOne({ paquete_id });
+    if (!p) return res.status(404).json({ error: "El paquete no existe en la base de datos." });
+    const fecha = new Date();
+    const { modifiedCount } = await col.updateOne(
+      { paquete_id },
+      {
+        $set: { estado_actual: "En almacén SV" },
+        $push: { historial: { estado: "En almacén SV", fecha } }
+      }
+    );
+    if (!modifiedCount) return res.status(500).json({ error: "No se pudo actualizar el paquete. Intenta nuevamente." });
+    res.json({ message: "Paquete marcado como 'En almacén SV' correctamente." });
+  } catch (err) {
+    console.error("Error en el servidor:", err.message);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
+});
+
 // ----------------------------------------
 // GET /scanner/all - HISTORIAL CON ORDEN FIJO Y PAGINACIÓN
 // ----------------------------------------
