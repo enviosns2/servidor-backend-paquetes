@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scanner de rastreo</title>
+  <style>
+    /* Layout */
+    body {
+      margin: 0; font-family: sans-serif;
+      display: flex; flex-direction: column; height: 100vh;
+    }
+    header {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 60px; background: #333; color: #fff;
+      display: flex; align-items: center; padding: 0 20px;
+      z-index: 1000;
+    }
+    header .logo img {
+      height: 40px; margin-right: 20px;
+    }
+    header h1 {
+      margin: 0; font-size: 1.2rem;
+    }
+    #container {
+      display: flex; flex: 1; padding-top: 60px;
+    }
+    aside {
+      width: 20%; background: #f4f4f4;
+      padding: 20px; box-sizing: border-box;
+    }
+    aside nav a {
+      display: flex; align-items: center;
+      padding: 8px 0; color: #333; text-decoration: none;
+    }
+    aside nav a .icon {
+      margin-right: 8px;
+    }
+    main {
+      flex: 1; padding: 20px;
+      box-sizing: border-box; overflow-y: auto;
+    }
+
+    /* Scanner widget */
+    #scannerWidget {
+      background: #fafafa; padding: 15px;
+      border: 1px solid #ddd; margin-bottom: 20px;
+    }
+    #scannerWidget label,
+    #scannerWidget select,
+    #scannerWidget input {
+      display: block; width: 100%; margin-bottom: 10px;
+    }
+    #status {
+      margin-top: 10px; font-size: 0.95rem;
+    }
+    .success { color: green; }
+    .error   { color: red; }
+
+    /* Mini-historial */
+    #miniHistory {
+      margin-bottom: 30px;
+    }
+    #miniHistory h2 {
+      margin: 0 0 10px;
+    }
+    #miniTable {
+      width: 100%; border-collapse: collapse;
+    }
+    #miniTable th, #miniTable td {
+      border: 1px solid #ccc; padding: 6px; text-align: left;
+    }
+    #miniTable th {
+      background: #eee;
+    }
+    .highlight {
+      animation: highlight 1s ease;
+    }
+    @keyframes highlight {
+      from { background: yellow; }
+      to   { background: transparent; }
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed; top: 70px; right: 20px;
+      padding: 10px 15px; background: #333; color: #fff;
+      border-radius: 4px; opacity: 0; transition: opacity 0.3s;
+      z-index: 1001;
+    }
+    #toast.show { opacity: 1; }
+    #toast.success { background: green; }
+    #toast.error   { background: red; }
+
+    /* Tables */
+    #tableControls,
+    #incTableControls {
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #counter {
+      margin-bottom: 8px; font-weight: bold;
+    }
+    table {
+      width: 100%; border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #ccc; padding: 8px; text-align: left;
+    }
+    th {
+      cursor: pointer; background: #eee;
+    }
+    #pagination, #incPagination {
+      margin-top: 10px; display: flex;
+      align-items: center; gap: 10px;
+    }
+    #pagination button:disabled,
+    #incPagination button:disabled {
+      opacity: 0.5; cursor: default;
+    }
+
+    /* Modal */
+    .modal {
+      display: none; position: fixed;
+      top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.5);
+      align-items: center; justify-content: center;
+      z-index: 1002;
+    }
+    .modal-content {
+      position: relative;
+      background:#fff; padding:20px;
+      border-radius:4px; width:400px; max-width:90%;
+    }
+    .modal-content h2 { margin-top:0; }
+    .modal-content label {
+      margin:10px 0 4px; display:block;
+    }
+    .modal-content input[type="text"],
+    .modal-content select,
+    .modal-content textarea {
+      width:100%; box-sizing:border-box;
+    }
+    .modal-content textarea {
+      resize:vertical; min-height:60px;
+    }
+    .modal-content .buttons {
+      margin-top:15px; text-align:right; gap:10px;
+    }
+    .close-icon {
+      position: absolute; top: 10px; right: 15px;
+      font-size: 1.5rem; cursor: pointer;
+    }
+    #detailAttachments img {
+      width: 60px; margin: 4px; cursor: pointer;
+    }
+    #detailTimeline div {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <img src="./LOGO.png" alt="Logo Empresa">
+    </div>
+    <h1>Scanner de rastreo</h1>
+  </header>
+
+  <div id="container">
+    <aside>
+      <nav>
+        <a href="#" id="nav-escaneo"><span class="icon">🔍</span>Escaneo</a>
+        <a href="#" id="nav-historial"><span class="icon">📜</span>Historial</a>
+        <a href="#" id="nav-incidencias"><span class="icon">⚠️</span>Incidencias</a>
+        <a href="#"><span class="icon">📊</span>Reportes</a>
+        <a href="#"><span class="icon">⚙️</span>Ajustes</a>
+      </nav>
+    </aside>
+
+    <main>
+      <!-- ESCANEO -->
+      <section id="view-escaneo">
+        <div id="scannerWidget">
+          <p id="mode">Modo actual: <strong>Recibido</strong></p>
+          <label for="modeSelect">Selecciona fase:</label>
+          <select id="modeSelect">
+            <optgroup label="Recepción">
+              <option value="recibido">Recibido</option>
+            </optgroup>
+            <optgroup label="Tránsito">
+              <option value="en-transito-nacional-mx">En tránsito nacional MX</option>
+              <option value="en-transito-nacional-eu">En tránsito nacional EU</option>
+              <option value="en-transito-internacional">En tránsito internacional</option>
+            </optgroup>
+            <optgroup label="Almacén">
+              <option value="en-almacen-eu">En almacén EU</option>
+              <option value="en-almacen-mx">En almacén MX</option>
+            </optgroup>
+          </select>
+          <label for="barcodeInput">Escanea o pega el código:</label>
+          <input type="text" id="barcodeInput" placeholder="Escanea el código aquí" autofocus>
+          <p id="status" aria-live="polite"></p>
+        </div>
+
+        <!-- MINI-HISTORIAL -->
+        <div id="miniHistory">
+          <h2>Últimos escaneos</h2>
+          <table id="miniTable">
+            <thead>
+              <tr>
+                <th>Fecha y hora</th>
+                <th>Paquete</th>
+                <th>Estado nuevo</th>
+                <th>Estado anterior</th>
+                <th>Incidencias</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- HISTORIAL COMPLETO -->
+      <section id="view-historial" style="display:none;">
+        <div id="counter">Mostrando 0 de 0 paquetes</div>
+        <div id="tableControls">
+          <input type="text" id="searchInput" placeholder="Buscar paquete…">
+          <select id="stateFilter">
+            <option value="">Todos los estados</option>
+            <optgroup label="Recepción"><option value="Recibido">Recibido</option></optgroup>
+            <optgroup label="Tránsito">
+              <option value="En tránsito nacional MX">En tránsito nacional MX</option>
+              <option value="En tránsito nacional EU">En tránsito nacional EU</option>
+              <option value="En tránsito internacional">En tránsito internacional</option>
+            </optgroup>
+            <optgroup label="Almacén">
+              <option value="En almacén EU">En almacén EU</option>
+              <option value="En almacén MX">En almacén MX</option>
+            </optgroup>
+          </select>
+        </div>
+        <table id="scanTable">
+          <thead>
+            <tr>
+              <th data-col="time">Fecha y hora</th>
+              <th data-col="id">Paquete</th>
+              <th data-col="new">Estado nuevo</th>
+              <th data-col="prev">Estado anterior</th>
+              <th data-col="inc">Incidencias</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="pagination">
+          <button id="prevPage">Anterior</button>
+          <span id="pageInfo">Página 1</span>
+          <button id="nextPage">Siguiente</button>
+        </div>
+      </section>
+
+      <!-- INCIDENCIAS -->
+      <section id="view-incidencias" style="display:none;">
+        <div id="incTableControls">
+          <input type="text" id="incSearch" placeholder="Buscar ID o paquete…">
+          <select id="incTipoFilter">
+            <option value="">Todos los tipos</option>
+            <option value="Dañado">Dañado</option>
+            <option value="Falta docs">Falta docs</option>
+            <option value="Dirección incorrecta">Dirección incorrecta</option>
+            <option value="Cliente ausente">Cliente ausente</option>
+            <option value="Otro">Otro</option>
+          </select>
+          <select id="incEstadoFilter">
+            <option value="">Todos los estados</option>
+            <option value="Abierta">Abierta</option>
+            <option value="En proceso">En proceso</option>
+            <option value="Resuelta">Resuelta</option>
+            <option value="Cerrada">Cerrada</option>
+            <option value="Rechazada">Rechazada</option>
+          </select>
+        </div>
+        <table id="incTable">
+          <thead>
+            <tr>
+              <th data-col="_id">ID</th>
+              <th data-col="paquete_id">Paquete</th>
+              <th data-col="tipo">Tipo</th>
+              <th data-col="estado">Estado</th>
+              <th data-col="fecha_creacion">Fecha creación</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="incPagination">
+          <button id="incPrev">Anterior</button>
+          <span id="incPageInfo">Página 1</span>
+          <button id="incNext">Siguiente</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal para reportar incidencia -->
+  <div id="incidenceModal" class="modal">
+    <div class="modal-content">
+      <h2>Reportar incidencia</h2>
+      <label for="incPaquete">Paquete</label>
+      <input type="text" id="incPaquete" readonly>
+      <label for="incTipo">Tipo de incidencia</label>
+      <select id="incTipo">
+        <option value="">-- Seleccione --</option>
+        <option value="Dañado">Dañado</option>
+        <option value="Falta docs">Falta docs</option>
+        <option value="Dirección incorrecta">Dirección incorrecta</option>
+        <option value="Cliente ausente">Cliente ausente</option>
+        <option value="Otro">Otro</option>
+      </select>
+      <label for="incDesc">Descripción</label>
+      <textarea id="incDesc"></textarea>
+      <label for="incAdjuntos">Adjuntar fotos/documentos</label>
+      <input type="file" id="incAdjuntos" multiple>
+      <div class="buttons">
+        <button id="incCancel">Cancelar</button>
+        <button id="incSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para detalle y edición de incidencia -->
+  <div id="incDetailModal" class="modal">
+    <div class="modal-content">
+      <span class="close-icon" id="detailCloseIcon">&times;</span>
+      <h2>Detalle de Incidencia</h2>
+      <div style="display: flex; gap: 16px; min-width: 340px; max-width: 700px;">
+        <!-- Columna izquierda: Cambios/Historial -->
+        <div style="flex:1; min-width: 180px; max-width: 320px; display: flex; flex-direction: column;">
+          <label for="detailStateSelect">Estado</label>
+          <select id="detailStateSelect">
+            <option>Abierta</option>
+            <option>En proceso</option>
+            <option>Resuelta</option>
+            <option>Cerrada</option>
+            <option>Rechazada</option>
+          </select>
+          <label>Adjuntos existentes</label>
+          <div id="detailAttachments" style="margin-bottom:8px;"></div>
+          <label for="detailFileInput">Subir nuevos adjuntos</label>
+          <input type="file" id="detailFileInput" multiple style="margin-bottom:8px; width: 140px;" />
+          <style>
+            /* Oculta el texto de nombre de archivo seleccionado en el input file del modal de detalle */
+            #detailFileInput::-webkit-file-upload-button { margin-right: 0; }
+            #detailFileInput { color: transparent; }
+            #detailFileInput::file-selector-button { color: initial; }
+          </style>
+          <h3 style="margin-top:12px;">Historial de cambios</h3>
+          <div id="detailTimeline" style="flex:1; min-height:120px; max-height:220px; overflow-y:auto; border:1px solid #eee; padding:4px; background:#fafbfc;"></div>
+        </div>
+        <!-- Columna derecha: Comentarios -->
+        <div style="flex:1; min-width: 180px; max-width: 320px; border-left:1px solid #eee; padding-left:12px; display: flex; flex-direction: column;">
+          <h3>Comentarios</h3>
+          <div id="detailComments" style="flex:1; min-height:120px; max-height:220px; overflow-y:auto; margin-bottom:8px; background:#fafbfc; border:1px solid #eee; padding:4px;"></div>
+          <label for="detailCommentInput">Nuevo comentario</label>
+          <textarea id="detailCommentInput" style="resize:vertical; min-height:40px; max-height:80px;"></textarea>
+        </div>
+      </div>
+      <div class="buttons">
+        <button id="detailSaveBtn">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    console.log("Script cargado correctamente");
+
+    // — Variables globales —
+    let mode         = "recibido";
+    let tableData    = [];
+    let totalItems   = 0;
+    let currentPage  = 1;
+    let pageSize     = 10;
+    let sortField    = "time";
+    let sortOrder    = "desc";
+    let filterText   = "";
+    let filterState  = "";
+
+    let incData      = [];
+    let incSortCol   = "fecha_creacion";
+    let incSortAsc   = false;
+    let incFilterText= "";
+    let incFilterTipo= "";
+    let incFilterEstado= "";
+    let incPage      = 1;
+    let incPageSize  = 10;
+
+    // --- Selección múltiple de paquetes ---
+    let selectedPaquetes = new Set();
+    let selectedIncidencias = new Set();
+
+    // — Referencias DOM —
+    const counterEl    = document.getElementById("counter");
+    const scanTbody    = document.querySelector("#scanTable tbody");
+    const miniTbody    = document.querySelector("#miniTable tbody");
+    const pageInfo     = document.getElementById("pageInfo");
+    const prevPageBtn  = document.getElementById("prevPage");
+    const nextPageBtn  = document.getElementById("nextPage");
+    const searchInput  = document.getElementById("searchInput");
+    const stateFilter  = document.getElementById("stateFilter");
+    const toast        = document.getElementById("toast");
+    const modal        = document.getElementById("incidenceModal");
+    const incPaquete   = document.getElementById("incPaquete");
+    const incTipo      = document.getElementById("incTipo");
+    const incDesc      = document.getElementById("incDesc");
+    const incAdjuntos  = document.getElementById("incAdjuntos");
+    const incCancel    = document.getElementById("incCancel");
+    const incSave      = document.getElementById("incSave");
+    const modeSelect   = document.getElementById("modeSelect");
+    const barcodeInput = document.getElementById("barcodeInput");
+    const statusEl     = document.getElementById("status");
+
+    // Referencias detalle incidencia
+    const detailModal        = document.getElementById("incDetailModal");
+    const detailCloseIcon    = document.getElementById("detailCloseIcon");
+    const detailSaveBtn      = document.getElementById("detailSaveBtn");
+    const detailStateSelect  = document.getElementById("detailStateSelect");
+    const detailCommentInput = document.getElementById("detailCommentInput");
+    const detailAttachments  = document.getElementById("detailAttachments");
+    const detailFileInput    = document.getElementById("detailFileInput");
+    const detailTimeline     = document.getElementById("detailTimeline");
+    let currentIncId         = "";
+
+    // — Funciones auxiliares —
+    function clearStatus(){
+      statusEl.innerText = "";
+      statusEl.className = "";
+    }
+    function updateStatus(msg, cls){
+      statusEl.innerText = msg;
+      statusEl.className = cls;
+      setTimeout(clearStatus, 5000);
+    }
+    function showToast(msg, type){
+      toast.innerText = msg;
+      toast.className = `show ${type}`;
+      setTimeout(() => toast.className = "", 3000);
+    }
+    function sanitizeInput(v){
+      return v.replace(/[^0-9a-zA-Z]/g, "-");
+    }
+    function formatDateTime(iso){
+      const d = new Date(iso);
+      const pad = n => n.toString().padStart(2, "0");
+      return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // — Manejo de vistas —
+    function showView(v){
+      ["view-escaneo","view-historial","view-incidencias"]
+        .forEach(id =>
+          document.getElementById(id).style.display = id===v?"block":"none"
+        );
+    }
+    document.getElementById("nav-escaneo").onclick   = ()=>showView("view-escaneo");
+    document.getElementById("nav-historial").onclick = ()=>showView("view-historial");
+    document.getElementById("nav-incidencias").onclick = ()=>{
+      showView("view-incidencias");
+      loadIncidencias();
+    };
+
+    // — Scanner widget —
+    modeSelect.addEventListener("change", ()=>{
+      mode = modeSelect.value;
+      document.getElementById("mode").innerHTML =
+        `Modo actual: <strong>${modeSelect.selectedOptions[0].text}</strong>`;
+      clearStatus();
+    });
+    ["beforeinput","input","paste","keyup"].forEach(e=>
+      barcodeInput.addEventListener(e, ()=> barcodeInput.value=sanitizeInput(barcodeInput.value))
+    );
+    setInterval(()=>{
+      const v = sanitizeInput(barcodeInput.value);
+      if(barcodeInput.value!==v) barcodeInput.value=v;
+    },25);
+
+    barcodeInput.addEventListener("keydown", e=>{
+      if(e.key==="Enter"){
+        e.preventDefault();
+        setTimeout(async ()=>{
+          const code = sanitizeInput(barcodeInput.value.trim());
+          if(!code) return updateStatus("Por favor, escanea un código válido.","error");
+          const endpoint = mode==="recibido"?"/recibido":`/${mode}`;
+          try{
+            const res = await fetch(
+              `https://servidor-backend-paquetes.onrender.com/scanner${endpoint}`, {
+                method: mode==="recibido"?"POST":"PUT",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({ paquete_id:code })
+              }
+            );
+            if(res.ok){
+              updateStatus("Operación correcta","success");
+              showToast(`Paquete ${code} actualizado`,"success");
+              loadPage(currentPage);
+            } else {
+              const { error } = await res.json();
+              updateStatus(error,"error");
+              showToast(error,"error");
+            }
+          } catch{
+            updateStatus("Error de red.","error");
+            showToast("Error de red","error");
+          } finally{
+            barcodeInput.value="";
+          }
+        },150);
+      }
+    });
+
+    // — Carga y render del historial —
+    async function loadPage(page=1){
+      currentPage=page;
+      let url = `https://servidor-backend-paquetes.onrender.com/scanner/all?page=${page}&pageSize=${pageSize}&sortField=${sortField}&sortOrder=${sortOrder}`;
+      if(filterState) url+=`&state=${encodeURIComponent(filterState)}`;
+      try{
+        const resp = await fetch(url);
+        const { totalItems: total, page: cur, items } = await resp.json();
+        totalItems=total; currentPage=cur;
+        tableData=items.map(p=>{
+          const h=p.historial;
+          return {
+            timeISO:h[h.length-1].fecha,
+            time:formatDateTime(h[h.length-1].fecha),
+            id:p.paquete_id,
+            new:p.estado_actual,
+            prev:h.length>1?h[h.length-2].estado:"",
+            inc:p.incidencias_count
+          };
+        });
+        renderTable(); renderMiniTable();
+      } catch(e){
+        console.error("Error cargando historial:", e);
+      }
+    }
+
+    function renderMiniTable(){
+      miniTbody.innerHTML="";
+      tableData.slice(0,5).forEach(r=>{
+        const tr=document.createElement("tr");
+        ["time","id","new","prev"].forEach(k=>{
+          const td=document.createElement("td");
+          td.innerText=r[k]; tr.appendChild(td);
+        });
+        const tdInc=document.createElement("td");
+        tdInc.innerHTML=r.inc>0?`<button class="inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
+        tr.appendChild(tdInc);
+        const tdA=document.createElement("td");
+        tdA.innerHTML=`<button class="${r.inc>0?"mini-view-inc":"mini-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button>`;
+        tr.appendChild(tdA);
+        tr.addEventListener("click", ()=>{
+          tr.classList.add("highlight");
+          setTimeout(()=>tr.classList.remove("highlight"),500);
+        });
+        miniTbody.appendChild(tr);
+      });
+    }
+
+    function renderTable(){
+      const start=(currentPage-1)*pageSize+1;
+      const end=Math.min(currentPage*pageSize,totalItems);
+      counterEl.innerText=`Mostrando ${start}–${end} de ${totalItems} paquetes`;
+
+      const filtered=tableData.filter(r=>!filterText||r.id.toLowerCase().includes(filterText));
+
+      // Encabezado con checkbox
+      scanTbody.parentElement.querySelector("thead")?.remove();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>
+        <th style='width:32px;'><input type='checkbox' id='selectAllPaqChk'></th>
+        <th data-col='time'>Fecha y hora</th>
+        <th data-col='id'>Paquete</th>
+        <th data-col='new'>Estado nuevo</th>
+        <th data-col='prev'>Estado anterior</th>
+        <th data-col='inc'>Incidencias</th>
+        <th>Acciones</th>
+      </tr>`;
+      scanTbody.parentElement.insertBefore(thead, scanTbody);
+
+      scanTbody.innerHTML="";
+      filtered.forEach(r=>{
+        const tr=document.createElement("tr");
+        // Checkbox de selección
+        const tdSel=document.createElement("td");
+        tdSel.style='text-align:center;';
+        tdSel.innerHTML = `<input type='checkbox' class='sel-paq' data-id='${r.id}' ${selectedPaquetes.has(r.id)?'checked':''}>`;
+        tr.appendChild(tdSel);
+        ["time","id","new","prev"].forEach(k=>{
+          const td=document.createElement("td");
+          td.innerText=r[k]; tr.appendChild(td);
+        });
+        const tdInc=document.createElement("td");
+        tdInc.innerHTML=r.inc>0?`<button class="hist-inc-count" data-id="${r.id}">${r.inc}</button>`:"0";
+        tr.appendChild(tdInc);
+        const tdA=document.createElement("td");
+        tdA.innerHTML=`<button class="${r.inc>0?"hist-view-inc":"hist-report-inc"}" data-id="${r.id}">${r.inc>0?"Ver":"Reportar"} incidencia</button> <button class="delete-paq" data-id="${r.id}">Eliminar</button>`;
+        tr.appendChild(tdA);
+        scanTbody.appendChild(tr);
+      });
+
+      // Controles de selección múltiple
+      let controls = document.getElementById("multiPaqControls");
+      if(!controls){
+        controls = document.createElement("div");
+        controls.id = "multiPaqControls";
+        controls.style = "margin-bottom:8px;";
+        scanTbody.parentElement.parentElement.insertBefore(controls, scanTbody.parentElement);
+      }
+      controls.innerHTML = `<button id='selectAllPaq'>${selectedPaquetes.size===filtered.length&&filtered.length>0?"Deseleccionar todos":"Seleccionar todos"}</button> <button id='deleteSelectedPaq'>Eliminar seleccionados</button> <span id='paqSelCount'></span>`;
+      document.getElementById("selectAllPaq").onclick = ()=>{
+        if(selectedPaquetes.size===filtered.length&&filtered.length>0){
+          filtered.forEach(r=>selectedPaquetes.delete(r.id));
+        }else{
+          filtered.forEach(r=>selectedPaquetes.add(r.id));
+        }
+        renderTable();
+      };
+      document.getElementById("selectAllPaqChk").checked = selectedPaquetes.size===filtered.length&&filtered.length>0;
+      document.getElementById("selectAllPaqChk").onclick = ()=>{
+        document.getElementById("selectAllPaq").click();
+      };
+      document.getElementById("deleteSelectedPaq").onclick = async ()=>{
+        if(selectedPaquetes.size===0) return showToast("No hay paquetes seleccionados","error");
+        if(!confirm(`¿Eliminar ${selectedPaquetes.size} paquetes?`)) return;
+        const password = prompt("Introduce la contraseña para eliminar los paquetes:");
+        if(!password) return;
+        let ok=0, fail=0;
+        for(const id of selectedPaquetes){
+          try{
+            const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/paquetes/${id}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password })
+            });
+            if(res.ok) ok++; else fail++;
+          }catch{ fail++; }
+        }
+        showToast(`Eliminados: ${ok}, Fallidos: ${fail}`,(fail===0?"success":"error"));
+        selectedPaquetes.clear();
+        loadPage(currentPage);
+      };
+      document.getElementById("paqSelCount").innerText = selectedPaquetes.size>0?`${selectedPaquetes.size} seleccionados`:'';
+
+      // Checkbox listeners
+      scanTbody.querySelectorAll(".sel-paq").forEach(cb=>{
+        cb.addEventListener("change",e=>{
+          if(e.target.checked) selectedPaquetes.add(e.target.dataset.id);
+          else selectedPaquetes.delete(e.target.dataset.id);
+          document.getElementById("paqSelCount").innerText = selectedPaquetes.size>0?`${selectedPaquetes.size} seleccionados`:'';
+          document.getElementById("selectAllPaqChk").checked = selectedPaquetes.size===filtered.length&&filtered.length>0;
+        });
+      });
+
+      const totalPages=Math.max(1,Math.ceil(totalItems/pageSize));
+      pageInfo.innerText=`Página ${currentPage} de ${totalPages}`;
+      prevPageBtn.disabled=currentPage===1;
+      nextPageBtn.disabled=currentPage===totalPages;
+    }
+
+    // --- Selección múltiple de incidencias ---
+    function renderIncTable(){
+      const all=filteredInc().sort((a,b)=>{
+        const av=a[incSortCol], bv=b[incSortCol];
+        if(av<bv) return incSortAsc?-1:1;
+        if(av>bv) return incSortAsc?1:-1;
+        return 0;
+      });
+      const start=(incPage-1)*incPageSize+1;
+      const end=Math.min(incPage*incPageSize, all.length);
+      incPageInfoEl.innerText=`Mostrando ${start}–${end} de ${all.length} incidencias`;
+
+      // Encabezado con checkbox
+      incTbody.parentElement.querySelector("thead")?.remove();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>
+        <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
+        <th data-col='_id'>ID</th>
+        <th data-col='paquete_id'>Paquete</th>
+        <th data-col='tipo'>Tipo</th>
+        <th data-col='estado'>Estado</th>
+        <th data-col='fecha_creacion'>Fecha creación</th>
+        <th>Acciones</th>
+      </tr>`;
+      incTbody.parentElement.insertBefore(thead, incTbody);
+
+      incTbody.innerHTML="";
+      all.slice(start-1,end).forEach(i=>{
+        const tr=document.createElement("tr");
+        // Checkbox de selección
+        const tdSel=document.createElement("td");
+        tdSel.style='text-align:center;';
+        tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
+        tr.appendChild(tdSel);
+        ["_id","paquete_id","tipo"].forEach(k=>{
+          const td=document.createElement("td");
+          td.innerText=i[k]; tr.appendChild(td);
+        });
+        const tdEst=document.createElement("td");
+        tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
+        tr.appendChild(tdEst);
+        const tdDate=document.createElement("td");
+        tdDate.innerText=formatDateTime(i.fecha_creacion);
+        tr.appendChild(tdDate);
+        const tdA=document.createElement("td");
+        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">Ver</button> <button class="edit-inc" data-id="${i._id}">Editar</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
+        tr.appendChild(tdA);
+        incTbody.appendChild(tr);
+
+        // Eliminar cualquier renderizado duplicado de comentarios aquí (los comentarios solo deben mostrarse en el modal de detalle, no en la tabla)
+      });
+
+      // Controles de selección múltiple
+      let controls = document.getElementById("multiIncControls");
+      if(!controls){
+        controls = document.createElement("div");
+        controls.id = "multiIncControls";
+        controls.style = "margin-bottom:8px;";
+        incTbody.parentElement.parentElement.insertBefore(controls, incTbody.parentElement);
+      }
+      controls.innerHTML = `<button id='selectAllInc'>${selectedIncidencias.size===all.length&&all.length>0?"Deseleccionar todos":"Seleccionar todos"}</button> <button id='deleteSelectedInc'>Eliminar seleccionados</button> <span id='incSelCount'></span>`;
+      document.getElementById("selectAllInc").onclick = ()=>{
+        if(selectedIncidencias.size===all.length&&all.length>0){
+          all.forEach(i=>selectedIncidencias.delete(i._id));
+        }else{
+          all.forEach(i=>selectedIncidencias.add(i._id));
+        }
+        renderIncTable();
+      };
+      document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
+      document.getElementById("selectAllIncChk").onclick = ()=>{
+        document.getElementById("selectAllInc").click();
+      };
+      document.getElementById("deleteSelectedInc").onclick = async ()=>{
+        if(selectedIncidencias.size===0) return showToast("No hay incidencias seleccionadas","error");
+        if(!confirm(`¿Eliminar ${selectedIncidencias.size} incidencias?`)) return;
+        const password = prompt("Introduce la contraseña para eliminar las incidencias:");
+        if(!password) return;
+        let ok=0, fail=0;
+        for(const id of selectedIncidencias){
+          try{
+            const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${id}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password })
+            });
+            if(res.ok) ok++; else fail++;
+          }catch{ fail++; }
+        }
+        showToast(`Eliminadas: ${ok}, Fallidas: ${fail}`,(fail===0?"success":"error"));
+        selectedIncidencias.clear();
+        loadIncidencias();
+      };
+      document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
+
+      // Checkbox listeners
+      incTbody.querySelectorAll(".sel-inc").forEach(cb=>{
+        cb.addEventListener("change",e=>{
+          if(e.target.checked) selectedIncidencias.add(e.target.dataset.id);
+          else selectedIncidencias.delete(e.target.dataset.id);
+          document.getElementById("incSelCount").innerText = selectedIncidencias.size>0?`${selectedIncidencias.size} seleccionadas`:'';
+          document.getElementById("selectAllIncChk").checked = selectedIncidencias.size===all.length&&all.length>0;
+        });
+      });
+
+      const maxP=Math.max(1, Math.ceil(filteredInc().length/incPageSize));
+      incPrevBtn.disabled=incPage===1;
+      incNextBtn.disabled=incPage===maxP;
+    }
+
+    // Manejo de eliminación de paquete
+    scanTbody.addEventListener("click", async e=>{
+      if(e.target.matches(".delete-paq")){
+        const id = e.target.dataset.id;
+        const password = prompt("Introduce la contraseña para eliminar el paquete:");
+        if(!password) return;
+        try{
+          const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/paquetes/${id}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password })
+          });
+          const j = await res.json();
+          if(res.ok){
+            showToast("Paquete eliminado correctamente","success");
+            loadPage(currentPage);
+          }else{
+            showToast(j.error||"Error al eliminar paquete","error");
+          }
+        }catch{
+          showToast("Error de red","error");
+        }
+      }
+    });
+
+    // — Orden y filtro —
+    document.querySelectorAll("#scanTable th[data-col]").forEach(th=>{
+      th.addEventListener("click", ()=>{
+        const c=th.dataset.col;
+        if(sortField===c) sortOrder=sortOrder==="asc"?"desc":"asc";
+        else{ sortField=c; sortOrder="asc"; }
+        loadPage(1);
+      });
+    });
+    stateFilter.addEventListener("change", e=>{
+      filterState=e.target.value;
+      loadPage(1);
+    });
+    searchInput.addEventListener("input", e=>{
+      filterText=e.target.value.toLowerCase();
+      renderTable();
+    });
+    prevPageBtn.addEventListener("click", ()=>{ if(currentPage>1) loadPage(currentPage-1); });
+    nextPageBtn.addEventListener("click", ()=>{ const tp=Math.ceil(totalItems/pageSize); if(currentPage<tp) loadPage(currentPage+1); });
+
+    // — Incidencias y modal de reporte —
+    function attachRowClicks(sel){
+      document.querySelector(sel).addEventListener("click", e=>{
+        const id=e.target.dataset.id;
+        if(!id) return;
+        if(e.target.matches(".inc-count")||
+           e.target.matches(".mini-view-inc")||
+           e.target.matches(".hist-view-inc")){
+          showView("view-incidencias");
+          document.getElementById("incSearch").value=id;
+          incFilterText=id.toLowerCase();
+          loadIncidencias();
+        } else if(e.target.matches(".mini-report-inc")||
+                  e.target.matches(".hist-report-inc")){
+          incPaquete.value=id;
+          modal.style.display="flex";
+        }
+      });
+    }
+    attachRowClicks("#miniTable");
+    attachRowClicks("#scanTable");
+
+    // Limpiar formulario de incidencia
+    function clearIncForm() {
+      incPaquete.value = "";
+      incTipo.value = "";
+      incDesc.value = "";
+      incAdjuntos.value = "";
+      // Limpiar lista visual de archivos preadjuntos si existe
+      const preList = document.getElementById("incAdjuntosList");
+      if (preList) preList.innerHTML = "";
+    }
+
+    // Mostrar lista de archivos preadjuntos con opción de eliminar
+    if (!document.getElementById("incAdjuntosList")) {
+      const list = document.createElement("div");
+      list.id = "incAdjuntosList";
+      incAdjuntos.parentElement.insertBefore(list, incAdjuntos.nextSibling);
+    }
+    incAdjuntos.addEventListener("change", function() {
+      const list = document.getElementById("incAdjuntosList");
+      list.innerHTML = "";
+      Array.from(incAdjuntos.files).forEach((f, idx) => {
+        const fileDiv = document.createElement("div");
+        fileDiv.style = "display:flex;align-items:center;gap:4px;";
+        fileDiv.innerHTML = `<span>${f.name}</span> <button type='button' class='del-pre-file' data-idx='${idx}' style='color:red;font-weight:bold;'>×</button>`;
+        list.appendChild(fileDiv);
+      });
+    });
+    document.getElementById("incAdjuntosList").addEventListener("click", function(e) {
+      if (e.target.classList.contains("del-pre-file")) {
+        const idx = parseInt(e.target.dataset.idx);
+        const dt = new DataTransfer();
+        Array.from(incAdjuntos.files).forEach((f, i) => { if (i !== idx) dt.items.add(f); });
+        incAdjuntos.files = dt.files;
+        incAdjuntos.dispatchEvent(new Event("change"));
+      }
+    });
+
+    incCancel.addEventListener("click", ()=>{ modal.style.display="none"; clearIncForm(); });
+    incSave.addEventListener("click", async ()=>{
+      const form=new FormData();
+      form.append("paquete_id", incPaquete.value);
+      form.append("tipo", incTipo.value);
+      form.append("descripcion", incDesc.value);
+      Array.from(incAdjuntos.files).forEach(f=> form.append("adjuntos", f));
+      try{
+        const res=await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias", {
+          method:"POST", body:form
+        });
+        const j=await res.json();
+        if(res.ok){
+          showToast("Incidencia creada correctamente","success");
+          modal.style.display="none";
+          clearIncForm();
+          loadPage(currentPage);
+        } else {
+          showToast(j.error||"Error al crear incidencia","error");
+        }
+      } catch{
+        showToast("Error de red","error");
+      }
+    });
+
+    const incTbody      = document.querySelector("#incTable tbody");
+    const incPrevBtn    = document.getElementById("incPrev");
+    const incNextBtn    = document.getElementById("incNext");
+    const incPageInfoEl = document.getElementById("incPageInfo");
+
+    document.getElementById("incSearch")
+      .addEventListener("input", e=>{
+        incFilterText=e.target.value.toLowerCase();
+        incPage=1;
+        renderIncTable();
+      });
+    document.getElementById("incTipoFilter")
+      .addEventListener("change", e=>{
+        incFilterTipo=e.target.value;
+        incPage=1;
+        renderIncTable();
+      });
+    document.getElementById("incEstadoFilter")
+      .addEventListener("change", e=>{
+        incFilterEstado=e.target.value;
+        incPage=1;
+        renderIncTable();
+      });
+
+    async function loadIncidencias(){
+      try{
+        const r=await fetch("https://servidor-backend-paquetes.onrender.com/scanner/incidencias");
+        incData=await r.json();
+        incPage=1;
+        renderIncTable();
+      } catch(e){
+        console.error("Error cargando incidencias:", e);
+      }
+    }
+
+    function filteredInc(){
+      return incData.filter(i=>
+        (!incFilterText   || i._id.includes(incFilterText)   || i.paquete_id.toLowerCase().includes(incFilterText)) &&
+        (!incFilterTipo   || i.tipo===incFilterTipo) &&
+        (!incFilterEstado || i.estado===incFilterEstado)
+      );
+    }
+
+    function renderIncTable(){
+      const all=filteredInc().sort((a,b)=>{
+        const av=a[incSortCol], bv=b[incSortCol];
+        if(av<bv) return incSortAsc?-1:1;
+        if(av>bv) return incSortAsc?1:-1;
+        return 0;
+      });
+      const start=(incPage-1)*incPageSize+1;
+      const end=Math.min(incPage*incPageSize, all.length);
+      incPageInfoEl.innerText=`Mostrando ${start}–${end} de ${all.length} incidencias`;
+
+      // Encabezado con checkbox
+      incTbody.parentElement.querySelector("thead")?.remove();
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>
+        <th style='width:32px;'><input type='checkbox' id='selectAllIncChk'></th>
+        <th data-col='_id'>ID</th>
+        <th data-col='paquete_id'>Paquete</th>
+        <th data-col='tipo'>Tipo</th>
+        <th data-col='estado'>Estado</th>
+        <th data-col='fecha_creacion'>Fecha creación</th>
+        <th>Acciones</th>
+      </tr>`;
+      incTbody.parentElement.insertBefore(thead, incTbody);
+
+      incTbody.innerHTML="";
+      all.slice(start-1,end).forEach(i=>{
+        const tr=document.createElement("tr");
+        // Checkbox de selección
+        const tdSel=document.createElement("td");
+        tdSel.style='text-align:center;';
+        tdSel.innerHTML = `<input type='checkbox' class='sel-inc' data-id='${i._id}' ${selectedIncidencias.has(i._id)?'checked':''}>`;
+        tr.appendChild(tdSel);
+        ["_id","paquete_id","tipo"].forEach(k=>{
+          const td=document.createElement("td");
+          td.innerText=i[k]; tr.appendChild(td);
+        });
+        const tdEst=document.createElement("td");
+        tdEst.innerHTML=`<span style="color:${i.estado==="Abierta"?"red":i.estado==="En proceso"?"orange":"green"}">${i.estado}</span>`;
+        tr.appendChild(tdEst);
+
+        const tdDate=document.createElement("td");
+        tdDate.innerText=formatDateTime(i.fecha_creacion);
+        tr.appendChild(tdDate);
+
+        const tdA=document.createElement("td");
+        tdA.innerHTML=`<button class="view-inc" data-id="${i._id}">Ver</button> <button class="edit-inc" data-id="${i._id}">Editar</button> <button class="delete-inc" data-id="${i._id}">Eliminar</button>`;
+        tr.appendChild(tdA);
+        incTbody.appendChild(tr);
+      });
+
+      const maxP=Math.max(1, Math.ceil(filteredInc().length/incPageSize));
+      incPrevBtn.disabled=incPage===1;
+      incNextBtn.disabled=incPage===maxP;
+    }
+
+    // Manejo de eliminación de incidencia
+    incTbody.addEventListener("click", async e=>{
+      if(e.target.matches(".delete-inc")){
+        const id = e.target.dataset.id;
+        const password = prompt("Introduce la contraseña para eliminar la incidencia:");
+        if(!password) return;
+        try{
+          const res = await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${id}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password })
+          });
+          const j = await res.json();
+          if(res.ok){
+            showToast("Incidencia eliminada correctamente","success");
+            loadIncidencias();
+          }else{
+            showToast(j.error||"Error al eliminar incidencia","error");
+          }
+        }catch{
+          showToast("Error de red","error");
+        }
+      }
+    });
+
+    // — Abrir modal de detalle/incidencia —
+    document.getElementById("view-incidencias").addEventListener("click", async e=>{
+      if(e.target.matches(".view-inc") || e.target.matches(".edit-inc")){
+        currentIncId=e.target.dataset.id;
+        // resetear campos no guardados
+        detailCommentInput.value="";
+        detailFileInput.value="";
+        try{
+          const res=await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}`);
+          const inc=await res.json();
+          detailStateSelect.value=inc.estado;
+          detailAttachments.innerHTML = "";
+          if (inc.adjuntos && inc.adjuntos.length > 0) {
+            inc.adjuntos.forEach(adj => {
+              let url = adj.url || adj;
+              let nombre = adj.nombre || "Adjunto";
+              const ext = url.split('.').pop().toLowerCase();
+              if (["jpg","jpeg","png","gif","bmp","webp"].includes(ext)) {
+                const img = document.createElement("img");
+                img.src = url;
+                img.onclick = () => window.open(url, "_blank");
+                img.title = nombre;
+                detailAttachments.appendChild(img);
+              } else {
+                const link = document.createElement("a");
+                link.href = url;
+                link.target = "_blank";
+                link.innerText = nombre;
+                link.style.margin = "4px";
+                detailAttachments.appendChild(link);
+              }
+            });
+          } else {
+            detailAttachments.innerHTML = '<span style="color:#888;">Sin adjuntos</span>';
+          }
+          // Mostrar comentarios (filtrar historial por eventos con comentario y sin estado ni adjuntos)
+          const comments = (inc.historial||[]).filter(ev => ev.comentario && !ev.estado && (!ev.adjuntos || ev.adjuntos.length===0));
+          const detailComments = document.getElementById("detailComments");
+          if (comments.length > 0) {
+            detailComments.innerHTML = comments.map(ev =>
+              `<div style='margin-bottom:8px;'><span style='color:#333;'>${ev.comentario}</span><br><span style='font-size:0.8em;color:#888;'>${formatDateTime(ev.fecha)}</span></div>`
+            ).join("");
+          } else {
+            detailComments.innerHTML = '<span style="color:#888;">Sin comentarios</span>';
+          }
+          renderDetailTimeline(inc.historial);
+          detailModal.style.display = "flex";
+        } catch{
+          showToast("No se pudo cargar la incidencia","error");
+        }
+      }
+    });
+
+    // — Guardar todos los cambios (estado, comentario, adjuntos) en un solo botón —
+    detailSaveBtn.addEventListener("click", async ()=>{
+      detailSaveBtn.disabled=true;
+      try{
+        // actualizar estado y comentario
+        await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}`, {
+          method:"PUT",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            nuevo_estado: detailStateSelect.value,
+            comentario: detailCommentInput.value
+          })
+        });
+        // subir adjuntos si hay archivos seleccionados
+        if(detailFileInput.files.length){
+          const form=new FormData();
+          Array.from(detailFileInput.files).forEach(f=>form.append("adjuntos",f));
+          await fetch(`https://servidor-backend-paquetes.onrender.com/scanner/incidencias/${currentIncId}`, {
+            method:"POST",
+            body: form
+          });
+        }
+        showToast("Cambios guardados","success");
+        detailModal.style.display="none";
+        loadIncidencias();
+      }catch(err){
+        showToast(err.error||"Error al guardar cambios","error");
+      }finally{
+        detailSaveBtn.disabled=false;
+      }
+    });
+
+    // — Cerrar modal sin guardar —
+    detailCloseIcon.addEventListener("click", ()=>{
+      detailModal.style.display="none";
+    });
+
+    function renderDetailTimeline(historial){
+      historial.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
+      detailTimeline.innerHTML = historial.map(ev => {
+        let html = '';
+        if (ev.estado) {
+          html += `<div><strong>Estado:</strong> ${ev.estado} <span style="font-size:0.8em;color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
+        }
+        if (ev.comentario) {
+          html += `<div><strong>Comentario:</strong> ${ev.comentario} <span style="font-size:0.8em;color:#666;">${formatDateTime(ev.fecha)}</span></div>`;
+        }
+        if (ev.adjuntos && Array.isArray(ev.adjuntos) && ev.adjuntos.length > 0) {
+          html += `<div><strong>Adjuntos:</strong> `;
+          ev.adjuntos.forEach(adj => {
+            let url = adj.url || adj;
+            let nombre = adj.nombre || "Adjunto";
+            const ext = url.split('.').pop().toLowerCase();
+            if (["jpg","jpeg","png","gif","bmp","webp"].includes(ext)) {
+              html += `<img src="${url}" style="width:50px;vertical-align:middle;margin:2px;cursor:pointer;" onclick="window.open('${url}','_blank')" title="${nombre}" />`;
+            } else {
+              html += `<a href="${url}" target="_blank" style="margin:2px;">${nombre}</a>`;
+            }
+          });
+          html += ` <span style=\"font-size:0.8em;color:#666;\">${formatDateTime(ev.fecha)}</span></div>`;
+        }
+        return html;
+      }).join("");
+    }
+
+    // — Inicialización —
+    loadPage(1);
+    showView("view-escaneo");
+  </script>
+</body>
+</html>
