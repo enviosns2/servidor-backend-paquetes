@@ -835,6 +835,16 @@ router.patch("/containers/:id/status", async (req, res) => {
         $push: { historial: { estado: newStatus, fecha } }
       }
     );
+    // Guardar el estado en el contenedor también
+    await colCont.updateOne(
+      { contenedor_id: containerId },
+      {
+        $set: { 
+          estado_actual: newStatus,
+          fecha_ultimo_estado: fecha
+        }
+      }
+    );
     res.json({
       message: `Container ${containerId} updated to "${newStatus}"`,
       paquetes_actualizados: result.modifiedCount
