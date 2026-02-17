@@ -836,7 +836,7 @@ router.patch("/containers/:id/status", async (req, res) => {
       }
     );
     res.json({
-      message: `Container ${containerId} updated to “${newStatus}”`,
+      message: `Container ${containerId} updated to "${newStatus}"`,
       paquetes_actualizados: result.modifiedCount
     });
   } catch (err) {
